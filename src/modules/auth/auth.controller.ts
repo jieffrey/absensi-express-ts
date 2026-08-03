@@ -20,7 +20,7 @@ export async function login(req: Request, res: Response) {
         success: false,
         error: {
           code: "INVALID_CREDENTIALS",
-          message: "Email atau password salah",
+          message: "Wrong email or password",
         },
       });
   }
@@ -35,7 +35,7 @@ export async function login(req: Request, res: Response) {
         success: false,
         error: {
           code: "INVALID_CREDENTIALS",
-          message: "Email atau password salah",
+          message: "Wrong email or password",
         },
       });
   }
@@ -76,7 +76,7 @@ export async function me(req: Request, res: Response) {
   );
 
   if (result.rows.length === 0) {
-    return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User tidak ditemukan' } });
+    return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } });
   }
 
   res.json({ success: true, data: result.rows[0] });

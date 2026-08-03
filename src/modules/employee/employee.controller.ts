@@ -70,7 +70,7 @@ export async function getEmployeeById(req: Request, res: Response) {
   if (result.rows.length === 0) {
     return res.status(404).json({
       success: false,
-      error: { code: "NOT_FOUND", message: "Karyawan tidak ditemukan" },
+      error: { code: "NOT_FOUND", message: "Employee not found" },
     });
   }
   res.json({ success: true, data: result.rows[0] });
@@ -90,7 +90,7 @@ export async function updateEmployee(req: Request, res: Response) {
   if (result.rows.length === 0) {
     return res.status(404).json({
       success: false,
-      error: { code: "NOT_FOUND", message: "Karyawan tidak ditemukan" },
+      error: { code: "NOT_FOUND", message: "Employee not found" },
     });
   }
   res.json({ success: true, data: result.rows[0] });
@@ -106,10 +106,10 @@ export async function deleteEmployee(req: Request, res: Response) {
   if (result.rows.length === 0) {
     return res.status(404).json({
       success: false,
-      error: { code: "NOT_FOUND", message: "Karyawan tidak ditemukan" },
+      error: { code: "NOT_FOUND", message: "Employee not found" },
     });
   }
-  res.json({ success: true, data: { message: "Karyawan dinonaktifkan" } });
+  res.json({ success: true, data: { message: "Employee deactivated" } });
 }
 
 export async function getMyProfile(req: Request, res: Response) {
