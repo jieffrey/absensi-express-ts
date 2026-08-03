@@ -58,3 +58,73 @@ export async function createEmployee(req: Request, res: Response) {
 
   res.status(201).json({ success: true, data: result.rows[0] });
 }
+
+export async function getEmployeeById(req: Request, res: Response) {
+  const result = await pool.query(
+    `SELECT e.id, e.name, e.email, e.status, r.name as role_name, e.department_id, e.position_id
+     FROM employees e JOIN roles r ON e.role_id = r.id
+     WHERE e.id = $1 AND e.company_id = $2`,
+    [req.params.id, req.user.companyId],
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({
+      success: false,
+      error: { code: "NOT_FOUND", message: "Karyawan tidak ditemukan" },
+    });
+  }
+  res.json({ success: true, data: result.rows[0] });
+}
+
+export async function updateEmployee(req: Request, res: Response) {
+  const { name, department_id, position_id } = req.body;
+
+  const result = await pool.query(
+    `UPDATE employees SET name = COALESCE($1, name), department_id = COALESCE($2, department_id),
+     position_id = COALESCE($3, position_id), updated_at = now()
+     WHERE id = $4 AND company_id = $5
+     RETURNING id, name, email, status`,
+    [name, department_id, position_id, req.params.id, req.user.companyId],
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({
+      success: false,
+      error: { code: "NOT_FOUND", message: "Karyawan tidak ditemukan" },
+    });
+  }
+  res.json({ success: true, data: result.rows[0] });
+}
+
+export async function deleteEmployee(req: Request, res: Response) {
+  const result = await pool.query(
+    `UPDATE employees SET status = 'resigned', updated_at = now()
+     WHERE id = $1 AND company_id = $2 RETURNING id`,
+    [req.params.id, req.user.companyId],
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({
+      success: false,
+      error: { code: "NOT_FOUND", message: "Karyawan tidak ditemukan" },
+    });
+  }
+  res.json({ success: true, data: { message: "Karyawan dinonaktifkan" } });
+}
+
+export async function getMyProfile(req: Request, res: Response) {
+  const result = await pool.query(
+    `SELECT id, name, email, department_id, position_id FROM employees WHERE id = $1`,
+    [req.user.sub],
+  );
+  res.json({ success: true, data: result.rows[0] });
+}
+
+export async function updateMyProfile(req: Request, res: Response) {
+  const { name } = req.body; // sengaja dibatasi — bukan role/department/company
+  const result = await pool.query(
+    `UPDATE employees SET name = COALESCE($1, name), updated_at = now() WHERE id = $2 RETURNING id, name, email`,
+    [name, req.user.sub],
+  );
+  res.json({ success: true, data: result.rows[0] });
+}
