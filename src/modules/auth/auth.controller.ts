@@ -65,3 +65,19 @@ export async function login(req: Request, res: Response) {
     },
   });
 }
+
+export async function me(req: Request, res: Response) {
+  const result = await pool.query(
+    `SELECT e.id, e.name, e.email, r.name as role_name, e.department_id, e.position_id
+     FROM employees e
+     JOIN roles r ON e.role_id = r.id
+     WHERE e.id = $1`,
+    [req.user.sub]
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User tidak ditemukan' } });
+  }
+
+  res.json({ success: true, data: result.rows[0] });
+}
