@@ -19,7 +19,7 @@ export async function markAsRead(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Notifikasi tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Notification not found" },
       });
   }
   res.json({ success: true, data: result.rows[0] });
@@ -32,6 +32,6 @@ export async function markAllAsRead(req: Request, res: Response) {
   );
   res.json({
     success: true,
-    data: { message: "Semua notifikasi ditandai sudah dibaca" },
+    data: { message: "All notifications marked as read" },
   });
 }

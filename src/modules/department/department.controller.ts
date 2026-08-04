@@ -19,7 +19,7 @@ export async function getDepartmentById(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Departemen tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Department not found" },
       });
   }
   res.json({ success: true, data: result.rows[0] });
@@ -45,14 +45,14 @@ export async function updateDepartment(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Departemen tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Department not found" },
       });
   }
   res.json({ success: true, data: result.rows[0] });
 }
 
 export async function deleteDepartment(req: Request, res: Response) {
-  // cek dulu ada karyawan aktif di departemen ini apa nggak, biar nggak "yatim"
+  // check first if there are active employees in this department to avoid orphans
   const check = await pool.query(
     `SELECT id FROM employees WHERE department_id = $1 AND status = 'active' LIMIT 1`,
     [req.params.id],
@@ -64,7 +64,7 @@ export async function deleteDepartment(req: Request, res: Response) {
         success: false,
         error: {
           code: "DEPARTMENT_IN_USE",
-          message: "Masih ada karyawan aktif di departemen ini",
+          message: "There are still active employees in this department",
         },
       });
   }
@@ -78,10 +78,10 @@ export async function deleteDepartment(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Departemen tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Department not found" },
       });
   }
-  res.json({ success: true, data: { message: "Departemen dihapus" } });
+  res.json({ success: true, data: { message: "Department deleted" } });
 }
 
 export async function getDepartmentPolicy(req: Request, res: Response) {
@@ -99,7 +99,7 @@ export async function updateDepartmentPolicy(req: Request, res: Response) {
     min_attendance_percentage,
     effective_date,
   } = req.body;
-  // INSERT baris baru, bukan update — supaya histori kebijakan lama tetap ada
+  // INSERT a new row instead of updating so old policy history is preserved
   const result = await pool.query(
     `INSERT INTO department_policies (department_id, allow_overtime, allow_wfh, min_attendance_percentage, effective_date)
      VALUES ($1, $2, $3, $4, $5) RETURNING *`,

@@ -41,7 +41,7 @@ export async function endSchedule(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Jadwal tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Schedule not found" },
       });
   res.json({ success: true, data: result.rows[0] });
 }

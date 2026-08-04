@@ -30,7 +30,7 @@ export async function updateWorkingDayPattern(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Pola tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Pattern not found" },
       });
   res.json({ success: true, data: result.rows[0] });
 }

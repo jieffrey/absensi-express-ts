@@ -28,10 +28,10 @@ export async function deleteHoliday(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Hari libur tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Holiday not found" },
       });
   }
-  res.json({ success: true, data: { message: "Hari libur dihapus" } });
+  res.json({ success: true, data: { message: "Holiday deleted" } });
 }
 
 export async function listCalendarEvents(req: Request, res: Response) {
@@ -64,7 +64,7 @@ export async function updateCalendarEvent(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Event tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Event not found" },
       });
   }
   res.json({ success: true, data: result.rows[0] });
@@ -80,8 +80,8 @@ export async function deleteCalendarEvent(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Event tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Event not found" },
       });
   }
-  res.json({ success: true, data: { message: "Event dihapus" } });
+  res.json({ success: true, data: { message: "Event deleted" } });
 }

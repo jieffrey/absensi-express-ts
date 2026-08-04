@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import authRoutes from './src/modules/auth/auth.routes';
 import employeeRoutes from './src/modules/employee/employee.routes'
 import departmentRoutes from './src/modules/department/department.routes';
@@ -18,7 +19,10 @@ import dashboardRoutes from './src/modules/dashboard/dashboard.routes';
 
 
 const app = express();
+app.use(cors());
+
 app.use(express.json());
+
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/employees', employeeRoutes);
 app.use('/api/v1/departments', departmentRoutes);

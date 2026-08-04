@@ -123,7 +123,7 @@ export async function getMyProfile(req: Request, res: Response) {
 }
 
 export async function updateMyProfile(req: Request, res: Response) {
-  const { name } = req.body; // sengaja dibatasi — bukan role/department/company
+  const { name } = req.body; // intentionally limited — not role/department/company
   const result = await pool.query(
     `UPDATE employees SET name = COALESCE($1, name), updated_at = now() WHERE id = $2 RETURNING id, name, email`,
     [name, req.user.sub],

@@ -19,7 +19,7 @@ export async function clockIn(req: Request, res: Response) {
   if (scheduleResult.rows.length === 0) {
     return res.status(400).json({
       success: false,
-      error: { code: "NO_SCHEDULE", message: "Belum ada jadwal kerja aktif" },
+      error: { code: "NO_SCHEDULE", message: "No active work schedule" },
     });
   }
   const schedule = scheduleResult.rows[0];
@@ -35,7 +35,7 @@ export async function clockIn(req: Request, res: Response) {
       success: false,
       error: {
         code: "OUTSIDE_RADIUS",
-        message: `Kamu di luar radius kantor (jarak: ${Math.round(distance)}m)`,
+        message: `You are outside the office radius (distance: ${Math.round(distance)}m)`,
       },
     });
   }
@@ -89,7 +89,7 @@ export async function clockOut(req: Request, res: Response) {
       success: false,
       error: {
         code: "NO_CLOCK_IN",
-        message: "Belum ada clock-in aktif hari ini",
+        message: "No active clock-in today",
       },
     });
   }

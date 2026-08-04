@@ -7,7 +7,7 @@ export function authorize(...allowedRoles: string[]) {
         .status(403)
         .json({
           success: false,
-          error: { code: "FORBIDDEN", message: "Tidak punya akses" },
+          error: { code: "FORBIDDEN", message: "You do not have access" },
         });
     }
     next();
@@ -24,7 +24,7 @@ export function requireSuperAdmin(
       .status(403)
       .json({
         success: false,
-        error: { code: "FORBIDDEN", message: "Khusus SuperAdmin" },
+        error: { code: "FORBIDDEN", message: "SuperAdmin only" },
       });
   }
   next();

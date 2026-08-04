@@ -39,7 +39,7 @@ export async function updateLocation(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Lokasi tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Location not found" },
       });
   res.json({ success: true, data: result.rows[0] });
 }
@@ -54,7 +54,7 @@ export async function deleteLocation(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Lokasi tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Location not found" },
       });
-  res.json({ success: true, data: { message: "Lokasi dihapus" } });
+  res.json({ success: true, data: { message: "Location deleted" } });
 }

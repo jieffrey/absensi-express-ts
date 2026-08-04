@@ -14,13 +14,13 @@ export async function createLeaveRequest(req: Request, res: Response) {
   const { leave_type_id, start_date, end_date, reason } = req.body;
   const employeeId = req.user.sub;
 
-  // hitung jumlah hari (simpel: selisih tanggal, belum exclude weekend/libur)
+  // count number of days (simple: date difference, doesn't exclude weekends/holidays)
   const start = new Date(start_date);
   const end = new Date(end_date);
   const totalDays =
     Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-  // cek saldo kuota dulu
+  // check quota balance first
   const balanceResult = await pool.query(
     `SELECT COALESCE(SUM(amount), 0) as balance FROM leave_quota_ledger WHERE employee_id = $1`,
     [employeeId],
@@ -32,7 +32,7 @@ export async function createLeaveRequest(req: Request, res: Response) {
       success: false,
       error: {
         code: "INSUFFICIENT_QUOTA",
-        message: `Saldo kuota tidak cukup (saldo: ${balance}, dibutuhkan: ${totalDays})`,
+        message: `Insufficient leave quota (balance: ${balance}, required: ${totalDays})`,
       },
     });
   }
@@ -72,7 +72,7 @@ export async function approveLeaveRequest(req: Request, res: Response) {
   try {
     await client.query("BEGIN");
 
-    // 1. Ambil data leave request, pastikan masih pending
+    // 1. Get leave request, make sure it's still pending
     const leaveResult = await client.query(
       `SELECT * FROM leave_requests WHERE id = $1 AND company_id = $2 AND status = 'pending' FOR UPDATE`,
       [id, req.user.companyId],
@@ -83,19 +83,19 @@ export async function approveLeaveRequest(req: Request, res: Response) {
         success: false,
         error: {
           code: "NOT_FOUND",
-          message: "Pengajuan tidak ditemukan atau sudah diproses",
+          message: "Request not found or already processed",
         },
       });
     }
     const leave = leaveResult.rows[0];
 
-    // 2. Update status jadi approved
+    // 2. Update status to approved
     await client.query(
       `UPDATE leave_requests SET status = 'approved', approved_by = $1, approved_at = now(), approval_note = $2 WHERE id = $3`,
       [req.user.sub, approval_note, id],
     );
 
-    // 3. Insert ke ledger — kuota terpakai (amount negatif)
+    // 3. Insert into ledger — used quota (negative amount)
     await client.query(
       `INSERT INTO leave_quota_ledger (employee_id, period, entry_type, amount, reference_id, created_by)
        VALUES ($1, date_trunc('month', $2::date), 'use', $3, $4, $5)`,
@@ -113,13 +113,13 @@ export async function approveLeaveRequest(req: Request, res: Response) {
     await createNotification(
       leave.employee_id,
       "leave_approved",
-      `Pengajuan izin kamu (${leave.start_date} - ${leave.end_date}) telah disetujui`,
+      `Your leave request (${leave.start_date} - ${leave.end_date}) has been approved`,
       "leave_request",
       leave.id,
     );
     res.json({
       success: true,
-      data: { message: "Pengajuan disetujui, kuota telah diperbarui" },
+      data: { message: "Request approved, quota has been updated" },
     });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -138,7 +138,7 @@ export async function rejectLeaveRequest(req: Request, res: Response) {
       success: false,
       error: {
         code: "REASON_REQUIRED",
-        message: "Alasan penolakan wajib diisi",
+        message: "Rejection reason is required",
       },
     });
   }
@@ -154,7 +154,7 @@ export async function rejectLeaveRequest(req: Request, res: Response) {
       success: false,
       error: {
         code: "NOT_FOUND",
-        message: "Pengajuan tidak ditemukan atau sudah diproses",
+        message: "Request not found or already processed",
       },
     });
   }
@@ -162,7 +162,7 @@ export async function rejectLeaveRequest(req: Request, res: Response) {
   await createNotification(
     result.rows[0].employee_id,
     "leave_rejected",
-    `Pengajuan izin kamu ditolak: ${approval_note}`,
+    `Your leave request was rejected: ${approval_note}`,
     "leave_request",
     result.rows[0].id,
   );
@@ -190,7 +190,7 @@ export async function adjustLeaveQuota(req: Request, res: Response) {
       success: false,
       error: {
         code: "REASON_REQUIRED",
-        message: "Alasan penyesuaian wajib diisi",
+        message: "Adjustment reason is required",
       },
     });
   }

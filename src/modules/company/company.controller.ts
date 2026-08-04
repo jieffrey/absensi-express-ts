@@ -15,7 +15,7 @@ export async function getCompanyById(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Mitra tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Company not found" },
       });
   }
   res.json({ success: true, data: result.rows[0] });
@@ -41,7 +41,7 @@ export async function updateCompany(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Mitra tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Company not found" },
       });
   }
   res.json({ success: true, data: result.rows[0] });
@@ -58,7 +58,7 @@ export async function updateCompanyStatus(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Mitra tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Company not found" },
       });
   }
   res.json({ success: true, data: result.rows[0] });

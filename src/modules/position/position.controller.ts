@@ -29,7 +29,7 @@ export async function updatePosition(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Jabatan tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Position not found" },
       });
   }
   res.json({ success: true, data: result.rows[0] });
@@ -45,8 +45,8 @@ export async function deletePosition(req: Request, res: Response) {
       .status(404)
       .json({
         success: false,
-        error: { code: "NOT_FOUND", message: "Jabatan tidak ditemukan" },
+        error: { code: "NOT_FOUND", message: "Position not found" },
       });
   }
-  res.json({ success: true, data: { message: "Jabatan dihapus" } });
+  res.json({ success: true, data: { message: "Position deleted" } });
 }

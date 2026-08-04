@@ -31,7 +31,7 @@ export async function login(req: Request, res: Response) {
       success: false,
       error: {
         code: "COMPANY_INACTIVE",
-        message: "Perusahaan Anda sudah tidak aktif, hubungi administrator",
+        message: "Your company is no longer active, please contact the administrator",
       },
     });
   }
