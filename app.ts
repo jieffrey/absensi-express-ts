@@ -10,7 +10,8 @@ import employeeScheduleRoutes from './src/modules/schedule/employeeSchedule.rout
 import attendanceRoutes from './src/modules/attendance/attendance.routes';
 import leaveRoutes from './src/modules/leave/leave.routes';
 import companyRoutes from './src/modules/company/company.routes';
-
+import holidayRoutes from './src/modules/holiday/holiday.routes';
+import calendarEventRoutes from './src/modules/holiday/calendarEvent.routes';
 
 const app = express();
 app.use(express.json());
@@ -25,6 +26,8 @@ app.use('/api/v1/schedules', employeeScheduleRoutes);
 app.use('/api/v1/attendance', attendanceRoutes);
 app.use('/api/v1/leave', leaveRoutes);
 app.use('/api/v1/companies', companyRoutes);
+app.use('/api/v1/holidays', holidayRoutes);
+app.use('/api/v1/calendar-events', calendarEventRoutes);
 
 
 export default app;
