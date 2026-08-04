@@ -7,8 +7,9 @@ export async function login(req: Request, res: Response) {
   const { email, password } = req.body;
 
   const result = await pool.query(
-    `SELECT e.*, r.name as role_name FROM employees e
+    `SELECT e.*, r.name as role_name, c.status as company_status FROM employees e
      JOIN roles r ON e.role_id = r.id
+     JOIN companies c ON e.company_id = c.id
      WHERE e.email = $1`,
     [email],
   );
@@ -24,6 +25,17 @@ export async function login(req: Request, res: Response) {
   }
 
   const employee = result.rows[0];
+
+  if (employee.company_status !== "active") {
+    return res.status(403).json({
+      success: false,
+      error: {
+        code: "COMPANY_INACTIVE",
+        message: "Perusahaan Anda sudah tidak aktif, hubungi administrator",
+      },
+    });
+  }
+
   const isValid = await bcrypt.compare(password, employee.password_hash);
 
   if (!isValid) {
@@ -72,12 +84,10 @@ export async function me(req: Request, res: Response) {
   );
 
   if (result.rows.length === 0) {
-    return res
-      .status(404)
-      .json({
-        success: false,
-        error: { code: "NOT_FOUND", message: "User not found" },
-      });
+    return res.status(404).json({
+      success: false,
+      error: { code: "NOT_FOUND", message: "User not found" },
+    });
   }
 
   res.json({ success: true, data: result.rows[0] });
