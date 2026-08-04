@@ -8,6 +8,7 @@ import locationRoutes from './src/modules/location/location.routes';
 import workingDayPatternRoutes from './src/modules/schedule/workingDayPattern.routes';
 import employeeScheduleRoutes from './src/modules/schedule/employeeSchedule.routes';
 import attendanceRoutes from './src/modules/attendance/attendance.routes';
+import leaveRoutes from './src/modules/leave/leave.routes';
 
 
 const app = express();
@@ -21,6 +22,7 @@ app.use('/api/v1/locations', locationRoutes);
 app.use('/api/v1/working-day-patterns', workingDayPatternRoutes);
 app.use('/api/v1/schedules', employeeScheduleRoutes);
 app.use('/api/v1/attendance', attendanceRoutes);
+app.use('/api/v1/leave', leaveRoutes);
 
 
 export default app;
