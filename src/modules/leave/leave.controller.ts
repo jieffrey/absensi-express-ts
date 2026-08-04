@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { pool } from "../../config/database";
+import { createNotification } from "../../shared/helpers/createNotification";
 
 export async function listLeaveTypes(req: Request, res: Response) {
   const result = await pool.query(
@@ -108,6 +109,14 @@ export async function approveLeaveRequest(req: Request, res: Response) {
     );
 
     await client.query("COMMIT");
+
+    await createNotification(
+      leave.employee_id,
+      "leave_approved",
+      `Pengajuan izin kamu (${leave.start_date} - ${leave.end_date}) telah disetujui`,
+      "leave_request",
+      leave.id,
+    );
     res.json({
       success: true,
       data: { message: "Pengajuan disetujui, kuota telah diperbarui" },
@@ -149,6 +158,15 @@ export async function rejectLeaveRequest(req: Request, res: Response) {
       },
     });
   }
+
+  await createNotification(
+    result.rows[0].employee_id,
+    "leave_rejected",
+    `Pengajuan izin kamu ditolak: ${approval_note}`,
+    "leave_request",
+    result.rows[0].id,
+  );
+
   res.json({ success: true, data: result.rows[0] });
 }
 
@@ -168,15 +186,13 @@ export async function adjustLeaveQuota(req: Request, res: Response) {
   const { employeeId } = req.params;
 
   if (!reason) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        error: {
-          code: "REASON_REQUIRED",
-          message: "Alasan penyesuaian wajib diisi",
-        },
-      });
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: "REASON_REQUIRED",
+        message: "Alasan penyesuaian wajib diisi",
+      },
+    });
   }
 
   const result = await pool.query(

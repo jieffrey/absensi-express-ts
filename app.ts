@@ -12,6 +12,8 @@ import leaveRoutes from './src/modules/leave/leave.routes';
 import companyRoutes from './src/modules/company/company.routes';
 import holidayRoutes from './src/modules/holiday/holiday.routes';
 import calendarEventRoutes from './src/modules/holiday/calendarEvent.routes';
+import notificationRoutes from './src/modules/notification/notification.routes';
+
 
 const app = express();
 app.use(express.json());
@@ -28,6 +30,7 @@ app.use('/api/v1/leave', leaveRoutes);
 app.use('/api/v1/companies', companyRoutes);
 app.use('/api/v1/holidays', holidayRoutes);
 app.use('/api/v1/calendar-events', calendarEventRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 
 
 export default app;
