@@ -85,15 +85,13 @@ export async function clockOut(req: Request, res: Response) {
   );
 
   if (todayResult.rows.length === 0) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        error: {
-          code: "NO_CLOCK_IN",
-          message: "Belum ada clock-in aktif hari ini",
-        },
-      });
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: "NO_CLOCK_IN",
+        message: "Belum ada clock-in aktif hari ini",
+      },
+    });
   }
   const attendance = todayResult.rows[0];
 
@@ -118,5 +116,54 @@ export async function myAttendance(req: Request, res: Response) {
     `SELECT * FROM attendances WHERE employee_id = $1 ORDER BY clock_in_time DESC LIMIT 30`,
     [req.user.sub],
   );
+  res.json({ success: true, data: result.rows });
+}
+
+export async function teamAttendance(req: Request, res: Response) {
+  const supervisorId = req.user.sub;
+
+  const result = await pool.query(
+    `SELECT a.*, e.name as employee_name
+     FROM attendances a
+     JOIN employees e ON a.employee_id = e.id
+     WHERE e.supervisor_id = $1 AND a.clock_in_time >= CURRENT_DATE
+     ORDER BY a.clock_in_time DESC`,
+    [supervisorId],
+  );
+
+  res.json({ success: true, data: result.rows });
+}
+
+export async function allAttendance(req: Request, res: Response) {
+  const { department_id, status, start_date, end_date } = req.query;
+
+  let sql = `
+    SELECT a.*, e.name as employee_name, e.department_id
+    FROM attendances a
+    JOIN employees e ON a.employee_id = e.id
+    WHERE a.company_id = $1
+  `;
+  const params: any[] = [req.user.companyId];
+
+  if (department_id) {
+    params.push(department_id);
+    sql += ` AND e.department_id = $${params.length}`;
+  }
+  if (status) {
+    params.push(status);
+    sql += ` AND a.status = $${params.length}`;
+  }
+  if (start_date) {
+    params.push(start_date);
+    sql += ` AND a.clock_in_time >= $${params.length}`;
+  }
+  if (end_date) {
+    params.push(end_date);
+    sql += ` AND a.clock_in_time <= $${params.length}`;
+  }
+
+  sql += ` ORDER BY a.clock_in_time DESC`;
+
+  const result = await pool.query(sql, params);
   res.json({ success: true, data: result.rows });
 }

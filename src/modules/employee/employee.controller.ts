@@ -35,20 +35,22 @@ export async function createEmployee(req: Request, res: Response) {
     role_id,
     department_id,
     position_id,
+    supervisor_id,
     join_date,
   } = req.body;
 
   const passwordHash = await bcrypt.hash(password, 10);
 
   const result = await pool.query(
-    `INSERT INTO employees (company_id, role_id, department_id, position_id, name, email, password_hash, join_date, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active')
+    `INSERT INTO employees (company_id, role_id, department_id, position_id, supervisor_id, name, email, password_hash, join_date, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active')
      RETURNING id, name, email, status`,
     [
       req.user.companyId,
       role_id,
       department_id,
       position_id,
+      supervisor_id,
       name,
       email,
       passwordHash,
