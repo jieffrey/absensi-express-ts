@@ -14,30 +14,26 @@ export async function login(req: Request, res: Response) {
   );
 
   if (result.rows.length === 0) {
-    return res
-      .status(401)
-      .json({
-        success: false,
-        error: {
-          code: "INVALID_CREDENTIALS",
-          message: "Wrong email or password",
-        },
-      });
+    return res.status(401).json({
+      success: false,
+      error: {
+        code: "INVALID_CREDENTIALS",
+        message: "Wrong email or password",
+      },
+    });
   }
 
   const employee = result.rows[0];
   const isValid = await bcrypt.compare(password, employee.password_hash);
 
   if (!isValid) {
-    return res
-      .status(401)
-      .json({
-        success: false,
-        error: {
-          code: "INVALID_CREDENTIALS",
-          message: "Wrong email or password",
-        },
-      });
+    return res.status(401).json({
+      success: false,
+      error: {
+        code: "INVALID_CREDENTIALS",
+        message: "Wrong email or password",
+      },
+    });
   }
 
   const token = jwt.sign(
@@ -72,12 +68,72 @@ export async function me(req: Request, res: Response) {
      FROM employees e
      JOIN roles r ON e.role_id = r.id
      WHERE e.id = $1`,
-    [req.user.sub]
+    [req.user.sub],
   );
 
   if (result.rows.length === 0) {
-    return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } });
+    return res
+      .status(404)
+      .json({
+        success: false,
+        error: { code: "NOT_FOUND", message: "User not found" },
+      });
   }
 
   res.json({ success: true, data: result.rows[0] });
+}
+
+export async function superadminLogin(req: Request, res: Response) {
+  const { email, password } = req.body;
+
+  const result = await pool.query(
+    `SELECT * FROM superadmins WHERE email = $1`,
+    [email],
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(401).json({
+      success: false,
+      error: {
+        code: "INVALID_CREDENTIALS",
+        message: "Wrong email or password",
+      },
+    });
+  }
+
+  const superadmin = result.rows[0];
+  const isValid = await bcrypt.compare(password, superadmin.password_hash);
+
+  if (!isValid) {
+    return res.status(401).json({
+      success: false,
+      error: {
+        code: "INVALID_CREDENTIALS",
+        message: "Wrong email or password",
+      },
+    });
+  }
+
+  const token = jwt.sign(
+    {
+      sub: superadmin.id,
+      actorType: "superadmin",
+      role: "superadmin",
+      companyId: null,
+    },
+    process.env.JWT_SECRET!,
+    { expiresIn: "8h" },
+  );
+
+  res.json({
+    success: true,
+    data: {
+      token,
+      user: {
+        id: superadmin.id,
+        name: superadmin.name,
+        email: superadmin.email,
+      },
+    },
+  });
 }
