@@ -69,7 +69,7 @@ Jawab HANYA dalam format JSON tanpa teks tambahan, dengan struktur persis sepert
 {"match": boolean, "confidence": number antara 0 dan 1, "reason": "penjelasan singkat"}`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       contents: [
         {
           role: "user",
