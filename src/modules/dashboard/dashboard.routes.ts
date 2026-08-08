@@ -8,4 +8,5 @@ router.get('/employee', authenticate, employeeDashboard);
 router.get('/supervisor', authenticate, authorize('supervisor'), supervisorDashboard);
 router.get('/admin', authenticate, authorize('admin'), adminDashboard);
 
+
 export default router;

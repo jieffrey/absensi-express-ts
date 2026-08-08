@@ -16,7 +16,7 @@ import calendarEventRoutes from './src/modules/holiday/calendarEvent.routes';
 import notificationRoutes from './src/modules/notification/notification.routes';
 import dashboardRoutes from './src/modules/dashboard/dashboard.routes';
 import faceRecognitionRoutes from "./src/modules/faceRecognition/faceRecognition.routes";
-
+import adminRoutes from "./src/shared/constants/admin.routes"
 
 
 const app = express();
@@ -43,6 +43,7 @@ app.use('/api/v1/calendar-events', calendarEventRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use("/api/v1/face-recognition", faceRecognitionRoutes);
+app.use("/api/v1/admin", adminRoutes);
 
 
 export default app;

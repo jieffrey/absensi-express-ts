@@ -1,5 +1,10 @@
 import { Request, Response } from "express";
 import { pool } from "../../config/database";
+import {
+  autoMarkAlpha,
+  monthlyLeaveQuota,
+  generateMonthlyRecap,
+} from "../../database/cronJobs";
 
 export async function employeeDashboard(req: Request, res: Response) {
   const employeeId = req.user.sub;
@@ -88,5 +93,25 @@ export async function adminDashboard(req: Request, res: Response) {
       today_attendance_breakdown: todayStats.rows,
       pending_leave_count: Number(pendingLeaves.rows[0].count),
     },
+  });
+}
+
+export async function triggerCronManual(req: Request, res: Response) {
+  const { job } = req.params;
+
+  if (job === "auto-alpha") await autoMarkAlpha();
+  else if (job === "monthly-quota") await monthlyLeaveQuota();
+  else if (job === "monthly-recap") await generateMonthlyRecap();
+  else
+    return res
+      .status(400)
+      .json({
+        success: false,
+        error: { code: "INVALID_JOB", message: "Job tidak dikenali" },
+      });
+
+  res.json({
+    success: true,
+    data: { message: `Job ${job} berhasil dijalankan manual` },
   });
 }
