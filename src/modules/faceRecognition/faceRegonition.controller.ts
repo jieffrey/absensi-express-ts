@@ -29,7 +29,7 @@ interface VerifyFaceBody {
 async function fetchImageAsBase64(url: string): Promise<string> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Gagal mengambil gambar referensi: ${response.status}`);
+    throw new Error(`Failed to fetch reference image: ${response.status}`);
   }
   const arrayBuffer = await response.arrayBuffer();
   return Buffer.from(arrayBuffer).toString("base64");
@@ -41,7 +41,7 @@ export async function verifyFace(req: Request, res: Response) {
 
     if (!employeeId || !capturedImage) {
       return res.status(400).json({
-        message: "employeeId dan capturedImage wajib diisi",
+        message: "employeeId and capturedImage are required",
       });
     }
 
@@ -54,7 +54,7 @@ export async function verifyFace(req: Request, res: Response) {
 
     if (referenceResult.rows.length === 0) {
       return res.status(404).json({
-        message: "Karyawan ini belum memiliki foto referensi wajah",
+        message: "This employee does not have a reference face photo yet",
       });
     }
 
@@ -100,16 +100,20 @@ Jawab HANYA dalam format JSON tanpa teks tambahan, dengan struktur persis sepert
       result = JSON.parse(cleaned);
     } catch {
       return res.status(502).json({
-        message: "Gagal parse response dari Gemini",
+        message: "Failed to parse Gemini response",
         raw: rawText,
       });
     }
 
     return res.status(200).json(result);
   } catch (error) {
-    console.error("verifyFace error:", error);
+    console.error("[verifyFace] Error:", error);
     return res.status(500).json({
-      message: "Terjadi kesalahan saat verifikasi wajah",
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Something went wrong. Please try again later.",
+      },
     });
   }
 }
@@ -122,7 +126,7 @@ export async function registerFaceReference(req: Request, res: Response) {
     if (!employeeId || !image) {
       return res
         .status(400)
-        .json({ message: "employeeId dan image wajib diisi" });
+        .json({ message: "employeeId and image are required" });
     }
 
     const dataUri = image.includes(",")
@@ -152,8 +156,14 @@ export async function registerFaceReference(req: Request, res: Response) {
     return res.status(201).json(insertResult.rows[0]);
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("registerFaceReference error:", error);
-    return res.status(500).json({ message: "Gagal menyimpan referensi wajah" });
+    console.error("[registerFaceReference] Error:", error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Something went wrong. Please try again later.",
+      },
+    });
   } finally {
     client.release();
   }
