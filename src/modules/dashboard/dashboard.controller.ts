@@ -55,7 +55,12 @@ export async function supervisorDashboard(req: Request, res: Response) {
     const supervisorId = req.user.sub;
 
     const teamToday = await pool.query(
-      `SELECT e.id, e.name, a.status, a.clock_in_time
+      `SELECT
+         COUNT(*)::int as total,
+         COUNT(*) FILTER (WHERE a.status = 'hadir')::int as present,
+         COUNT(*) FILTER (WHERE a.status = 'telat')::int as late,
+         COUNT(*) FILTER (WHERE a.status = 'alpha')::int as absent,
+         COUNT(*) FILTER (WHERE a.clock_in_time IS NULL AND a.status IS NULL)::int as not_checked_in
        FROM employees e
        LEFT JOIN attendances a ON a.employee_id = e.id AND a.clock_in_time >= CURRENT_DATE
        WHERE e.supervisor_id = $1 AND e.status = 'active'`,
@@ -72,7 +77,7 @@ export async function supervisorDashboard(req: Request, res: Response) {
     res.json({
       success: true,
       data: {
-        team_today: teamToday.rows,
+        team_today: teamToday.rows[0] ?? null,
         pending_leave_count: Number(pendingLeaves.rows[0].count),
       },
     });
@@ -98,9 +103,12 @@ export async function adminDashboard(req: Request, res: Response) {
     );
 
     const todayStats = await pool.query(
-      `SELECT status, COUNT(*) as count FROM attendances
-       WHERE company_id = $1 AND clock_in_time >= CURRENT_DATE
-       GROUP BY status`,
+      `SELECT
+         COUNT(*) FILTER (WHERE status = 'hadir')::int as present,
+         COUNT(*) FILTER (WHERE status = 'telat')::int as late,
+         COUNT(*) FILTER (WHERE status = 'alpha')::int as absent
+       FROM attendances
+       WHERE company_id = $1 AND clock_in_time >= CURRENT_DATE`,
       [companyId],
     );
 
@@ -113,7 +121,7 @@ export async function adminDashboard(req: Request, res: Response) {
       success: true,
       data: {
         total_active_employees: Number(totalEmployees.rows[0].count),
-        today_attendance_breakdown: todayStats.rows,
+        today_attendance_breakdown: todayStats.rows[0] ?? null,
         pending_leave_count: Number(pendingLeaves.rows[0].count),
       },
     });
