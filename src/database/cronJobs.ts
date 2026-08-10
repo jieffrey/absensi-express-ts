@@ -91,7 +91,7 @@ export function startCronJobs() {
     }
   });
 
-  console.log("⏰ Cron jobs aktif: auto-alpha, monthly quota, monthly recap");
+  console.log("Cron jobs aktif: auto-alpha, monthly quota, monthly recap");
 }
 
 // Export juga fungsi individualnya, buat testing manual tanpa nunggu jadwal

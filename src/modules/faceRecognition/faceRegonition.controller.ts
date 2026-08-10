@@ -5,12 +5,10 @@ import { pool } from "../../config/database";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-
 interface RegisterFaceBody {
   employeeId: string; // UUID
   image: string; // base64
 }
-
 
 interface VerifyFaceBody {
   referenceImage: string; // base64, boleh dengan atau tanpa prefix "data:image/jpeg;base64,"
@@ -37,24 +35,36 @@ async function fetchImageAsBase64(url: string): Promise<string> {
 
 export async function verifyFace(req: Request, res: Response) {
   try {
-    const { employeeId, capturedImage } = req.body as VerifyFaceBody;
+    const employeeId = req.user.sub;
+    const { capturedImage } = req.body as { capturedImage: string };
 
-    if (!employeeId || !capturedImage) {
+    if (!capturedImage) {
       return res.status(400).json({
-        message: "employeeId and capturedImage are required",
+        success: false,
+        error: {
+          code: "CAPTURED_IMAGE_REQUIRED",
+          message: "capturedImage is required",
+        },
       });
     }
 
     const referenceResult = await pool.query(
-      `SELECT image_url FROM employee_face_references
-       WHERE employee_id = $1 AND is_active = true
+      `SELECT image_url
+       FROM employee_face_references
+       WHERE employee_id = $1
+         AND is_active = true
+       ORDER BY created_at DESC
        LIMIT 1`,
       [employeeId],
     );
 
     if (referenceResult.rows.length === 0) {
       return res.status(404).json({
-        message: "This employee does not have a reference face photo yet",
+        success: false,
+        error: {
+          code: "FACE_REFERENCE_NOT_FOUND",
+          message: "This employee does not have a reference face photo yet",
+        },
       });
     }
 

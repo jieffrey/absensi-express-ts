@@ -2,6 +2,27 @@ import { Request, Response } from "express";
 import { pool } from "../../config/database";
 import { getDistanceMeters } from "../../shared/helpers/geoDistance";
 
+class FaceReferenceNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FaceReferenceNotFoundError";
+  }
+}
+
+class GeminiParseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GeminiParseError";
+  }
+}
+
+async function verifyFaceMatch(
+  employeeId: string,
+  capturedImage: string,
+): Promise<{ match: boolean; confidence?: number; reason?: string }> {
+  throw new Error(`Face verification is not configured for employee ${employeeId}`);
+}
+
 export async function clockIn(req: Request, res: Response) {
   try {
     const { lat, lng } = req.body;
@@ -83,26 +104,39 @@ export async function clockIn(req: Request, res: Response) {
 
 export async function clockOut(req: Request, res: Response) {
   try {
-    const { lat, lng } = req.body;
+    const { lat, lng, face_image: capturedImage  } = req.body;
     const employeeId = req.user.sub;
+    const companyId = req.user.companyId;
+
+    if (!capturedImage) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "FACE_IMAGE_REQUIRED",
+          message: "face_image is required",
+        },
+      });
+    }
 
     const todayResult = await pool.query(
       `SELECT a.*, l.latitude, l.longitude, l.radius_meters
        FROM attendances a
        JOIN employee_schedules es ON a.schedule_id = es.id
        JOIN office_locations l ON es.location_id = l.id
-       WHERE a.employee_id = $1 AND a.clock_out_time IS NULL
-       ORDER BY a.clock_in_time DESC LIMIT 1`,
-      [employeeId],
+       WHERE a.employee_id = $1
+         AND a.company_id = $2
+         AND a.clock_out_time IS NULL
+         AND a.clock_in_time >= CURRENT_DATE
+         AND a.clock_in_time < CURRENT_DATE + INTERVAL '1 day'
+       ORDER BY a.clock_in_time DESC
+       LIMIT 1`,
+      [employeeId, companyId],
     );
 
     if (todayResult.rows.length === 0) {
       return res.status(400).json({
         success: false,
-        error: {
-          code: "NO_CLOCK_IN",
-          message: "No active clock-in today",
-        },
+        error: { code: "NO_CLOCK_IN", message: "No active clock-in today" },
       });
     }
     const attendance = todayResult.rows[0];
@@ -113,14 +147,60 @@ export async function clockOut(req: Request, res: Response) {
       attendance.latitude,
       attendance.longitude,
     );
+    if (distance > attendance.radius_meters) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "OUTSIDE_RADIUS",
+          message: `You are outside the office radius (distance: ${Math.round(distance)}m)`,
+        },
+      });
+    }
+
+    let faceResult;
+    try {
+      faceResult = await verifyFaceMatch(employeeId, capturedImage);
+    } catch (error) {
+      if (error instanceof FaceReferenceNotFoundError) {
+        return res.status(404).json({
+          success: false,
+          error: { code: "FACE_REFERENCE_NOT_FOUND", message: error.message },
+        });
+      }
+      if (error instanceof GeminiParseError) {
+        return res.status(502).json({
+          success: false,
+          error: {
+            code: "FACE_VERIFICATION_PARSE_ERROR",
+            message: error.message,
+          },
+        });
+      }
+      throw error;
+    }
+
+    if (!faceResult.match) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "FACE_MISMATCH",
+          message: "Face verification failed. Please try again.",
+          detail: {
+            confidence: faceResult.confidence,
+            reason: faceResult.reason,
+          },
+        },
+      });
+    }
 
     const result = await pool.query(
-      `UPDATE attendances SET clock_out_time = now(), clock_out_lat = $1, clock_out_lng = $2, clock_out_distance_m = $3
-       WHERE id = $4 RETURNING *`,
-      [lat, lng, distance, attendance.id],
+      `UPDATE attendances
+       SET clock_out_time = now(), clock_out_lat = $1, clock_out_lng = $2, clock_out_distance_m = $3, face_match_status = $4
+       WHERE id = $5 AND company_id = $6 RETURNING *`,
+      [lat, lng, distance, "passed", attendance.id, companyId],
     );
 
-    res.json({ success: true, data: result.rows[0] });
+    return res.json({ success: true, data: result.rows[0] });
   } catch (err) {
     console.error("[clockOut] Error:", err);
     return res.status(500).json({

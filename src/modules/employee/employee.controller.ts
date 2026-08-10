@@ -172,12 +172,56 @@ export async function deleteEmployee(req: Request, res: Response) {
 export async function getMyProfile(req: Request, res: Response) {
   try {
     const result = await pool.query(
-      `SELECT id, name, email, department_id, position_id FROM employees WHERE id = $1`,
+      `
+      SELECT
+          e.id,
+          e.name,
+          e.email,
+          e.join_date,
+          e.status,
+          r.id AS role_id,
+          r.name AS role_name,
+          d.id AS department_id,
+          d.name AS department_name,
+          p.id AS position_id,
+          p.name AS position_name,
+          s.id AS supervisor_id,
+          s.name AS supervisor_name,
+          c.id AS company_id,
+          c.name AS company_name
+      FROM employees e
+      LEFT JOIN roles r
+          ON r.id = e.role_id
+      LEFT JOIN departments d
+          ON d.id = e.department_id
+      LEFT JOIN positions p
+          ON p.id = e.position_id
+      LEFT JOIN employees s
+          ON s.id = e.supervisor_id
+      LEFT JOIN companies c
+          ON c.id = e.company_id
+      WHERE e.id = $1
+      `,
       [req.user.sub],
     );
-    res.json({ success: true, data: result.rows[0] });
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Employee profile not found",
+        },
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: result.rows[0],
+    });
   } catch (err) {
     console.error("[getMyProfile] Error:", err);
+
     return res.status(500).json({
       success: false,
       error: {
