@@ -26,7 +26,7 @@ export async function createLocation(req: Request, res: Response) {
     const result = await pool.query(
       `INSERT INTO office_locations (company_id, name, latitude, longitude, radius_meters)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [req.user.companyId, name, latitude, longitude, radius_meters ?? 100],
+      [req.user.companyId, name, latitude, longitude, radius_meters ?? 500],
     );
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
