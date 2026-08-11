@@ -104,16 +104,24 @@ export async function adminDashboard(req: Request, res: Response) {
 
     const todayStats = await pool.query(
       `SELECT
-         COUNT(*) FILTER (WHERE status = 'hadir')::int as present,
-         COUNT(*) FILTER (WHERE status = 'telat')::int as late,
-         COUNT(*) FILTER (WHERE status = 'alpha')::int as absent
-       FROM attendances
-       WHERE company_id = $1 AND clock_in_time >= CURRENT_DATE`,
+         COUNT(*)::int as total,
+         COUNT(*) FILTER (WHERE a.status = 'hadir')::int as present,
+         COUNT(*) FILTER (WHERE a.status = 'telat')::int as late,
+         COUNT(*) FILTER (WHERE a.status = 'alpha')::int as absent,
+         COUNT(*) FILTER (WHERE a.clock_in_time IS NULL AND a.status IS NULL)::int as not_checked_in
+       FROM employees e
+       LEFT JOIN attendances a ON a.employee_id = e.id AND a.clock_in_time >= CURRENT_DATE
+       WHERE e.company_id = $1 AND e.status = 'active'`,
       [companyId],
     );
 
     const pendingLeaves = await pool.query(
       `SELECT COUNT(*) as count FROM leave_requests WHERE company_id = $1 AND status = 'pending'`,
+      [companyId],
+    );
+
+    const pendingOvertime = await pool.query(
+      `SELECT COUNT(*) as count FROM overtime_requests WHERE company_id = $1 AND status = 'pending'`,
       [companyId],
     );
 
@@ -123,6 +131,7 @@ export async function adminDashboard(req: Request, res: Response) {
         total_active_employees: Number(totalEmployees.rows[0].count),
         today_attendance_breakdown: todayStats.rows[0] ?? null,
         pending_leave_count: Number(pendingLeaves.rows[0].count),
+        pending_overtime_count: Number(pendingOvertime.rows[0].count),
       },
     });
   } catch (err) {
