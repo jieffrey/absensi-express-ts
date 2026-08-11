@@ -1,32 +1,26 @@
 import { Request, Response } from "express";
 import { pool } from "../../config/database";
 import { getDistanceMeters } from "../../shared/helpers/geoDistance";
-
-class FaceReferenceNotFoundError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "FaceReferenceNotFoundError";
-  }
-}
-
-class GeminiParseError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "GeminiParseError";
-  }
-}
-
-async function verifyFaceMatch(
-  employeeId: string,
-  capturedImage: string,
-): Promise<{ match: boolean; confidence?: number; reason?: string }> {
-  throw new Error(`Face verification is not configured for employee ${employeeId}`);
-}
+import {
+  verifyEmployeeFace,
+  FaceReferenceNotFoundError,
+  GeminiParseError,
+} from "../../shared/helpers/verifyEmployeeFace";
 
 export async function clockIn(req: Request, res: Response) {
   try {
-    const { lat, lng } = req.body;
+    const { lat, lng, face_image: capturedImage } = req.body;
     const employeeId = req.user.sub;
+
+    if (!capturedImage) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "FACE_IMAGE_REQUIRED",
+          message: "face_image is required",
+        },
+      });
+    }
 
     const scheduleResult = await pool.query(
       `SELECT es.id as schedule_id, s.start_time, s.tolerance_minutes, l.latitude, l.longitude, l.radius_meters
@@ -62,8 +56,6 @@ export async function clockIn(req: Request, res: Response) {
       });
     }
 
-    const faceMatchStatus = "skipped";
-
     const now = new Date();
     const [schedHour, schedMin] = schedule.start_time.split(":").map(Number);
     const scheduledTime = new Date(now);
@@ -72,6 +64,42 @@ export async function clockIn(req: Request, res: Response) {
 
     const status =
       now.getTime() > scheduledTime.getTime() + toleranceMs ? "telat" : "hadir";
+
+    let faceMatchStatus: string;
+    try {
+      const faceResult = await verifyEmployeeFace(employeeId, capturedImage);
+      if (!faceResult.match) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: "FACE_MISMATCH",
+            message: "Face verification failed. Please try again.",
+            detail: {
+              confidence: faceResult.confidence,
+              reason: faceResult.reason,
+            },
+          },
+        });
+      }
+      faceMatchStatus = "passed";
+    } catch (error) {
+      if (error instanceof FaceReferenceNotFoundError) {
+        return res.status(404).json({
+          success: false,
+          error: { code: "FACE_REFERENCE_NOT_FOUND", message: error.message },
+        });
+      }
+      if (error instanceof GeminiParseError) {
+        return res.status(502).json({
+          success: false,
+          error: {
+            code: "FACE_VERIFICATION_PARSE_ERROR",
+            message: error.message,
+          },
+        });
+      }
+      throw error;
+    }
 
     const result = await pool.query(
       `INSERT INTO attendances (company_id, employee_id, schedule_id, clock_in_time, clock_in_lat, clock_in_lng, clock_in_distance_m, face_match_status, status)
@@ -159,7 +187,7 @@ export async function clockOut(req: Request, res: Response) {
 
     let faceResult;
     try {
-      faceResult = await verifyFaceMatch(employeeId, capturedImage);
+      faceResult = await verifyEmployeeFace(employeeId, capturedImage);
     } catch (error) {
       if (error instanceof FaceReferenceNotFoundError) {
         return res.status(404).json({
