@@ -19,11 +19,11 @@ import bcrypt from "bcrypt";
 import { pool } from "../config/database";
 
 // ---------- Email placeholders (TEMP-MAIL — bukan alamat asli user) ----------
-const EMAIL_SUPERADMIN = "superadmin.testing@temp-mail.org";
-const EMAIL_ADMIN = "admin.testing@temp-mail.org";
-const EMAIL_SUPERVISOR = "supervisor.testing@temp-mail.org";
-const EMAIL_KARYAWAN1 = "karyawan1.testing@temp-mail.org";
-const EMAIL_KARYAWAN2 = "karyawan2.testing@temp-mail.org";
+const EMAIL_SUPERADMIN = "pomol90551@lanvos.com";
+const EMAIL_ADMIN = "kovapo8960@primetor.com";
+const EMAIL_SUPERVISOR = "woyob14978@murkstar.com";
+const EMAIL_KARYAWAN1 = "vodoga2817@netiren.com";
+const EMAIL_KARYAWAN2 = "banoxol921@netiren.com";
 
 // ---------- Constants ----------
 const COMPANY_NAME = "PT Testing SAMS";
