@@ -1,9 +1,9 @@
-// src/database/seedTesting.ts
-// Seed data idempotent untuk PT Testing SAMS — tidak menyentuh PT Contoh Sejahtera / PT Mitra Baru.
+﻿// src/database/queries/seedTesting.ts
+// Seed data idempotent untuk PT Testing SAMS â€” tidak menyentuh PT Contoh Sejahtera / PT Mitra Baru.
 // Strategi idempotent: hapus rows yang terkait "PT Testing SAMS" dari child ke parent dalam transaction,
 // lalu insert ulang. Bisa dijalankan berulang (npm run seed:testing) tanpa duplikasi.
 //
-// ⚠️  EMAIL PLACEHOLDER — TIDAK AMAN dipakai langsung
+// âš ï¸  EMAIL PLACEHOLDER â€” TIDAK AMAN dipakai langsung
 // Alamat email di bawah adalah placeholder publik dari layanan temp-mail.
 // Inbox temp-mail (mis. temp-mail.org) BERSIFAT PUBLIK: siapa saja yang tahu
 // alamatnya bisa buka isinya. Karena forgot-password mengirim link reset
@@ -16,14 +16,14 @@
 // flow yang valid, gunakan alamat yang baru di-generate user.
 
 import bcrypt from "bcrypt";
-import { pool } from "../config/database";
+import { pool } from "../../config/database";
 
-// ---------- Email placeholders (TEMP-MAIL — bukan alamat asli user) ----------
-const EMAIL_SUPERADMIN = "pomol90551@lanvos.com";
-const EMAIL_ADMIN = "kovapo8960@primetor.com";
-const EMAIL_SUPERVISOR = "woyob14978@murkstar.com";
-const EMAIL_KARYAWAN1 = "vodoga2817@netiren.com";
-const EMAIL_KARYAWAN2 = "banoxol921@netiren.com";
+// ---------- Email placeholders (TEMP-MAIL â€” bukan alamat asli user) ----------
+const EMAIL_SUPERADMIN = "lahapi7651@joystill.com";
+const EMAIL_ADMIN = "yokafa5745@novelv.com";
+const EMAIL_SUPERVISOR = "mipesa7964@luhupo.com";
+const EMAIL_KARYAWAN1 = "vawik29615@luhupo.com";
+const EMAIL_KARYAWAN2 = "majase5156@neplis.com";
 
 // ---------- Constants ----------
 const COMPANY_NAME = "PT Testing SAMS";
@@ -54,7 +54,7 @@ function addDays(date: Date, days: number): Date {
   return d;
 }
 
-// ---------- Cleanup (DELETE child → parent, scoped to PT Testing SAMS) ----------
+// ---------- Cleanup (DELETE child â†’ parent, scoped to PT Testing SAMS) ----------
 async function cleanup(companyId: string): Promise<void> {
   // Get employee ids in this company
   const empRes = await pool.query<{ id: string }>(
@@ -64,7 +64,7 @@ async function cleanup(companyId: string): Promise<void> {
   const empIds = empRes.rows.map((r) => r.id);
 
   if (empIds.length === 0) {
-    // No employees — but master data / superadmin may still exist. Clean by company_id & email scope.
+    // No employees â€” but master data / superadmin may still exist. Clean by company_id & email scope.
     await pool.query(`DELETE FROM superadmins WHERE email = $1`, [EMAIL_SUPERADMIN]);
     await pool.query(`DELETE FROM holidays WHERE company_id = $1`, [companyId]);
     await pool.query(`DELETE FROM calendar_events WHERE company_id = $1`, [companyId]);
@@ -87,18 +87,24 @@ async function cleanup(companyId: string): Promise<void> {
   await pool.query(`DELETE FROM overtime_requests WHERE company_id = $1`, [companyId]);
   // 3. personal_agendas
   await pool.query(`DELETE FROM personal_agendas WHERE company_id = $1`, [companyId]);
-  // 4. calendar_events (created_by → employees; company_id exists)
+  // 4. calendar_events (created_by â†’ employees; company_id exists)
   await pool.query(`DELETE FROM calendar_events WHERE company_id = $1`, [companyId]);
   // 5. holidays
   await pool.query(`DELETE FROM holidays WHERE company_id = $1`, [companyId]);
-  // 6. leave_requests (approved_by → employees)
+  // 5b. leave_quota_ledger rows referencing leave_requests of this company
+  //     (FK leave_quota_ledger_reference_id_fkey â†’ leave_requests.id, populated on approval)
+  await pool.query(
+    `DELETE FROM leave_quota_ledger WHERE reference_id IN (SELECT id FROM leave_requests WHERE company_id = $1)`,
+    [companyId],
+  );
+  // 6. leave_requests (approved_by â†’ employees)
   await pool.query(`DELETE FROM leave_requests WHERE company_id = $1`, [companyId]);
   // 7. leave_quota_ledger
   await pool.query(
     `DELETE FROM leave_quota_ledger WHERE employee_id = ANY($1::uuid[])`,
     [empIds],
   );
-  // 8. notifications (employee_id → employees)
+  // 8. notifications (employee_id â†’ employees)
   await pool.query(
     `DELETE FROM notifications WHERE employee_id = ANY($1::uuid[])`,
     [empIds],
@@ -108,12 +114,12 @@ async function cleanup(companyId: string): Promise<void> {
     `DELETE FROM employee_face_references WHERE employee_id = ANY($1::uuid[])`,
     [empIds],
   );
-  // 10. password_reset_tokens (account_id, no FK anymore — scope by account)
+  // 10. password_reset_tokens (account_id, no FK anymore â€” scope by account)
   await pool.query(
     `DELETE FROM password_reset_tokens WHERE account_id = ANY($1::uuid[])`,
     [empIds],
   );
-  // 11. employee_schedules (employee_id → employees)
+  // 11. employee_schedules (employee_id â†’ employees)
   await pool.query(
     `DELETE FROM employee_schedules WHERE employee_id = ANY($1::uuid[])`,
     [empIds],
@@ -123,12 +129,12 @@ async function cleanup(companyId: string): Promise<void> {
     `DELETE FROM audit_logs WHERE actor_id = ANY($1::uuid[])`,
     [empIds],
   );
-  // 13. department_policies (department_id → departments)
+  // 13. department_policies (department_id â†’ departments)
   await pool.query(
     `DELETE FROM department_policies WHERE department_id IN (SELECT id FROM departments WHERE company_id = $1)`,
     [companyId],
   );
-  // 14. employees (supervisor_id self-FK → employees) — set supervisor_id to NULL first
+  // 14. employees (supervisor_id self-FK â†’ employees) â€” set supervisor_id to NULL first
   await pool.query(
     `UPDATE employees SET supervisor_id = NULL WHERE company_id = $1`,
     [companyId],
@@ -212,7 +218,7 @@ async function buildFreshCompany(): Promise<IdMaps> {
     [companyId],
   );
 
-  // Departments — 3 departemen agar ada variasi relasi & kebijakan
+  // Departments â€” 3 departemen agar ada variasi relasi & kebijakan
   const deptITRes = await pool.query<{ id: string }>(
     `INSERT INTO departments (company_id, name) VALUES ($1, 'IT') RETURNING id`,
     [companyId],
@@ -334,7 +340,7 @@ async function insertAccounts(maps: IdMaps): Promise<void> {
   );
   maps.supervisorId = supRes.rows[0].id;
 
-  // Karyawan 1 (IT, Staff) — bawahan langsung supervisor
+  // Karyawan 1 (IT, Staff) â€” bawahan langsung supervisor
   const k1Res = await pool.query<{ id: string }>(
     `INSERT INTO employees (company_id, role_id, department_id, position_id, supervisor_id, name, email, password_hash, join_date, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), 'active') RETURNING id`,
@@ -342,7 +348,7 @@ async function insertAccounts(maps: IdMaps): Promise<void> {
   );
   maps.karyawan1Id = k1Res.rows[0].id;
 
-  // Karyawan 2 (Operasional, Staff) — bawahan supervisor (lintas departemen)
+  // Karyawan 2 (Operasional, Staff) â€” bawahan supervisor (lintas departemen)
   const k2Res = await pool.query<{ id: string }>(
     `INSERT INTO employees (company_id, role_id, department_id, position_id, supervisor_id, name, email, password_hash, join_date, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), 'active') RETURNING id`,
@@ -393,11 +399,11 @@ async function insertLeaveQuotas(maps: IdMaps): Promise<void> {
 async function insertHistoricalAttendances(maps: IdMaps): Promise<void> {
   // 21 hari ke belakang, hanya hari kerja (Mon-Fri sesuai WDP).
   // Variasi status untuk testing laporan/rekap:
-  //   - "hadir" — clock_in sebelum 09:00 + tolerance
-  //   - "telat" — clock_in lewat 09:00 + tolerance
-  //   - "alpha" — di-insert oleh cron 23:00; di sini kita juga tulis manual utk history
-  // Hari leave approved untuk karyawan 1 → SKIP (di-handle leave_requests).
-  // Hari yang di-skip sama sekali → simulate tidak ada record (artinya alpha kalau lewat tengah malam)
+  //   - "hadir" â€” clock_in sebelum 09:00 + tolerance
+  //   - "telat" â€” clock_in lewat 09:00 + tolerance
+  //   - "alpha" â€” di-insert oleh cron 23:00; di sini kita juga tulis manual utk history
+  // Hari leave approved untuk karyawan 1 â†’ SKIP (di-handle leave_requests).
+  // Hari yang di-skip sama sekali â†’ simulate tidak ada record (artinya alpha kalau lewat tengah malam)
 
   const today = new Date();
   const empIds = [
@@ -521,7 +527,7 @@ async function insertLeaveRequests(maps: IdMaps): Promise<void> {
   );
   maps.leaveReqIds.cutiApproved = cutiApproved.rows[0].id;
 
-  // 6. REJECTED sakit kemarin (karyawan 1) — lampiran tidak lengkap
+  // 6. REJECTED sakit kemarin (karyawan 1) â€” lampiran tidak lengkap
   const sakitRejected = await pool.query<{ id: string }>(
     `INSERT INTO leave_requests (company_id, employee_id, leave_type_id, start_date, end_date, total_days, reason, status, approved_by, approved_at, approval_note)
      VALUES ($1, $2, $3, $4, $5, 1, 'Sakit', 'rejected', $6, now(), 'Lampiran surat dokter belum dilampirkan') RETURNING id`,
@@ -615,7 +621,7 @@ async function insertPersonalAgendas(maps: IdMaps): Promise<void> {
      VALUES ($1, $2, $3, 'Stand-up tim Operasional', 'Daily stand-up dengan tim', '09:30:00', '10:00:00')`,
     [maps.companyId, maps.karyawan2Id, tomorrow],
   );
-  // Agenda tanpa jam spesifik (null start/end) — variasi
+  // Agenda tanpa jam spesifik (null start/end) â€” variasi
   await pool.query(
     `INSERT INTO personal_agendas (company_id, employee_id, agenda_date, title, description, start_time, end_time)
      VALUES ($1, $2, $3, 'Reminder deadline laporan bulanan', 'Submit laporan bulanan ke admin', NULL, NULL)`,
@@ -743,61 +749,61 @@ async function run() {
     let companyId: string;
     if (existing.rows.length > 0) {
       companyId = existing.rows[0].id;
-      console.log(`♻️  Found existing company ${COMPANY_NAME} (id=${companyId}), cleaning up...`);
+      console.log(`â™»ï¸  Found existing company ${COMPANY_NAME} (id=${companyId}), cleaning up...`);
       await cleanup(companyId);
     }
 
-    console.log(`🌱 Seeding ${COMPANY_NAME}...`);
+    console.log(`ðŸŒ± Seeding ${COMPANY_NAME}...`);
     const maps = await buildFreshCompany();
-    console.log(`  ✓ Company + master data created`);
+    console.log(`  âœ“ Company + master data created`);
 
     await insertAccounts(maps);
-    console.log(`  ✓ Accounts (1 superadmin, 1 admin, 1 supervisor, 2 karyawan)`);
+    console.log(`  âœ“ Accounts (1 superadmin, 1 admin, 1 supervisor, 2 karyawan)`);
 
     await insertDepartmentPolicies(maps);
-    console.log(`  ✓ Department policies (1 per department)`);
+    console.log(`  âœ“ Department policies (1 per department)`);
 
     await insertEmployeeSchedules(maps);
-    console.log(`  ✓ Employee schedules`);
+    console.log(`  âœ“ Employee schedules`);
 
     await insertLeaveQuotas(maps);
-    console.log(`  ✓ Leave quota ledger (12 days Cuti Tahunan per employee)`);
+    console.log(`  âœ“ Leave quota ledger (12 days Cuti Tahunan per employee)`);
 
     await insertHistoricalAttendances(maps);
-    console.log(`  ✓ Historical attendances (21 days, status: hadir/telat/alpha + skip on leave)`);
+    console.log(`  âœ“ Historical attendances (21 days, status: hadir/telat/alpha + skip on leave)`);
 
     await insertLeaveRequests(maps);
-    console.log(`  ✓ Leave requests (3 pending, 2 approved, 1 rejected — tiap leave type)`);
+    console.log(`  âœ“ Leave requests (3 pending, 2 approved, 1 rejected â€” tiap leave type)`);
 
     await insertOvertimeRequests(maps);
-    console.log(`  ✓ Overtime requests (1 pending, 1 approved, 1 rejected)`);
+    console.log(`  âœ“ Overtime requests (1 pending, 1 approved, 1 rejected)`);
 
     await insertHolidays(maps);
-    console.log(`  ✓ Holidays (3 entries)`);
+    console.log(`  âœ“ Holidays (3 entries)`);
 
     await insertCalendarEvents(maps);
-    console.log(`  ✓ Calendar events (3 entries)`);
+    console.log(`  âœ“ Calendar events (3 entries)`);
 
     await insertPersonalAgendas(maps);
-    console.log(`  ✓ Personal agendas (4 entries)`);
+    console.log(`  âœ“ Personal agendas (4 entries)`);
 
     await insertNotifications(maps);
-    console.log(`  ✓ Notifications (10 entries — 7 type variations)`);
+    console.log(`  âœ“ Notifications (10 entries â€” 7 type variations)`);
 
     await insertAuditLogs(maps);
-    console.log(`  ✓ Audit logs (5 entries — sample manual)`);
+    console.log(`  âœ“ Audit logs (5 entries â€” sample manual)`);
 
     await client.query("COMMIT");
-    console.log(`\n✅ Seed complete!`);
-    console.log(`\nLogin credentials (EMAIL PLACEHOLDER — belum tentu terkirim ke real inbox):`);
+    console.log(`\nâœ… Seed complete!`);
+    console.log(`\nLogin credentials (EMAIL PLACEHOLDER â€” belum tentu terkirim ke real inbox):`);
     console.log(`  Superadmin: ${EMAIL_SUPERADMIN} / superadmin123`);
     console.log(`  Admin:      ${EMAIL_ADMIN} / password123`);
     console.log(`  Supervisor: ${EMAIL_SUPERVISOR} / password123`);
     console.log(`  Karyawan 1: ${EMAIL_KARYAWAN1} / password123`);
     console.log(`  Karyawan 2: ${EMAIL_KARYAWAN2} / password123`);
-    console.log(`\n⚠️  LANGKAH MANUAL setelah seed:`);
+    console.log(`\nâš ï¸  LANGKAH MANUAL setelah seed:`);
     console.log(`  1. Buka temp-mail.org dan generate alamat BARU (mis. xxx123@temp-mail.org).`);
-    console.log(`  2. Replace konstanta EMAIL_* di file src/database/seedTesting.ts dengan`);
+    console.log(`  2. Replace konstanta EMAIL_* di file src/database/queries/seedTesting.ts dengan`);
     console.log(`     alamat yang baru, lalu run ulang npm run seed:testing.`);
     console.log(`  3. Setiap akun employees WAJIB mendaftarkan wajah lewat FaceRegisterPanel`);
     console.log(`     sebelum bisa clock-in.`);
@@ -813,6 +819,6 @@ async function run() {
 run()
   .then(() => process.exit(0))
   .catch((err) => {
-    console.error("❌ Seed gagal:", err);
+    console.error("âŒ Seed gagal:", err);
     process.exit(1);
   });

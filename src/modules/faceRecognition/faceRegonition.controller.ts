@@ -101,7 +101,7 @@ export async function registerFaceReference(req: Request, res: Response) {
 
     await client.query("COMMIT");
 
-    return res.status(201).json(insertResult.rows[0]);
+    return res.status(201).json({ success: true, data: insertResult.rows[0] });
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("[registerFaceReference] Error:", error);

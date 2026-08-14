@@ -19,8 +19,9 @@
   "main": "app.js",
   "scripts": {
     "dev": "tsx watch server.ts",
-    "seed": "tsx src/database/seed.ts",
-    "seed:testing": "tsx src/database/seedTesting.ts",
+    "seed": "tsx src/database/queries/seed.ts",
+    "seed:testing": "tsx src/database/queries/seedTesting.ts",
+    "seed:testing:clean": "tsx src/database/queries/seedTestingClean.ts",
     "build": "tsc",
     "start": "node dist/server.js"
   },
