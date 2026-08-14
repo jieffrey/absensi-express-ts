@@ -242,23 +242,30 @@ export async function clockOut(req: Request, res: Response) {
 }
 
 export async function myAttendance(req: Request, res: Response) {
-  try {
-    const result = await pool.query(
-      `SELECT * FROM attendances WHERE employee_id = $1 ORDER BY clock_in_time DESC LIMIT 30`,
-      [req.user.sub],
-    );
-    res.json({ success: true, data: result.rows });
-  } catch (err) {
-    console.error("[myAttendance] Error:", err);
-    return res.status(500).json({
-      success: false,
-      error: {
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Something went wrong. Please try again later.",
-      },
-    });
+    try {
+      const result = await pool.query(
+        `SELECT a.*,
+                (a.clock_in_time::date)::text AS date,
+                COALESCE(l.name, '') AS location_name
+         FROM attendances a
+         LEFT JOIN employee_schedules es ON a.schedule_id = es.id
+         LEFT JOIN office_locations l ON es.location_id = l.id
+         WHERE a.employee_id = $1
+         ORDER BY a.clock_in_time DESC LIMIT 30`,
+        [req.user.sub],
+      );
+      res.json({ success: true, data: result.rows });
+    } catch (err) {
+      console.error("[myAttendance] Error:", err);
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Something went wrong. Please try again later.",
+        },
+      });
+    }
   }
-}
 
 export async function teamAttendance(req: Request, res: Response) {
   try {

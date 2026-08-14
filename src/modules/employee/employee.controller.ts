@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { pool } from "../../config/database";
+import cloudinary from "../../config/cloudinary";
 
 export async function listEmployees(req: Request, res: Response) {
   try {
@@ -177,8 +178,9 @@ export async function getMyProfile(req: Request, res: Response) {
           e.id,
           e.name,
           e.email,
-          e.join_date,
-          e.status,
+            e.join_date,
+            e.status,
+            e.image,
           r.id AS role_id,
           r.name AS role_name,
           d.id AS department_id,
@@ -233,21 +235,31 @@ export async function getMyProfile(req: Request, res: Response) {
 }
 
 export async function updateMyProfile(req: Request, res: Response) {
-  try {
-    const { name } = req.body; // intentionally limited — not role/department/company
-    const result = await pool.query(
-      `UPDATE employees SET name = COALESCE($1, name), updated_at = now() WHERE id = $2 RETURNING id, name, email`,
-      [name, req.user.sub],
-    );
-    res.json({ success: true, data: result.rows[0] });
-  } catch (err) {
-    console.error("[updateMyProfile] Error:", err);
-    return res.status(500).json({
-      success: false,
-      error: {
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Something went wrong. Please try again later.",
-      },
-    });
+    try {
+      const { name, image } = req.body; // intentionally limited -- not role/department/company
+      let imageUrl: string | null = null;
+      if (image && typeof image === "string") {
+        const dataUri = image.includes(",")
+          ? image
+          : `data:image/jpeg;base64,${image}`;
+        const uploadResult = await cloudinary.uploader.upload(dataUri, {
+          folder: "sams/avatars",
+        });
+        imageUrl = uploadResult.secure_url;
+      }
+      const result = await pool.query(
+        `UPDATE employees SET name = COALESCE($1, name), image = COALESCE($2, image), updated_at = now() WHERE id = $3 RETURNING id, name, email, image`,
+        [name, imageUrl, req.user.sub],
+      );
+      res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+      console.error("[updateMyProfile] Error:", err);
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Something went wrong. Please try again later.",
+        },
+      });
+    }
   }
-}

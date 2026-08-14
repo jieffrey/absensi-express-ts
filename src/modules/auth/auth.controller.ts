@@ -39,6 +39,17 @@ export async function login(req: Request, res: Response) {
       });
     }
 
+    if (employee.status !== "active") {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: "ACCOUNT_INACTIVE",
+          message:
+            "Akun Anda sudah tidak aktif (resign/dinonaktifkan). Hubungi administrator.",
+        },
+      });
+    }
+
     const isValid = await bcrypt.compare(password, employee.password_hash);
 
     if (!isValid) {
@@ -70,8 +81,9 @@ export async function login(req: Request, res: Response) {
         user: {
           id: employee.id,
           name: employee.name,
-          email: employee.email,
-          role: employee.role_name,
+            email: employee.email,
+            image: employee.image,
+            role: employee.role_name,
         },
       },
     });
@@ -90,7 +102,7 @@ export async function login(req: Request, res: Response) {
 export async function me(req: Request, res: Response) {
   try {
     const result = await pool.query(
-      `SELECT e.id, e.name, e.email, r.name as role_name, e.department_id, e.position_id
+      `SELECT e.id, e.name, e.email, e.image, r.name as role_name, e.department_id, e.position_id
        FROM employees e
        JOIN roles r ON e.role_id = r.id
        WHERE e.id = $1`,
@@ -333,6 +345,84 @@ export async function superadminLogin(req: Request, res: Response) {
     });
   } catch (err) {
     console.error("[superadminLogin] Error:", err);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Something went wrong. Please try again later.",
+      },
+    });
+  }
+}
+
+export async function changePassword(req: Request, res: Response) {
+  try {
+    const { oldPassword, newPassword } = req.body;
+
+    if (typeof oldPassword !== "string" || !oldPassword) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "OLD_PASSWORD_REQUIRED",
+          message: "Password lama wajib diisi",
+        },
+      });
+    }
+
+    if (typeof newPassword !== "string" || newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "PASSWORD_TOO_SHORT",
+          message: "Password baru minimal 8 karakter",
+        },
+      });
+    }
+
+    if (req.user.actorType !== "employee") {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: "NOT_SUPPORTED",
+          message: "Ganti password hanya tersedia untuk karyawan",
+        },
+      });
+    }
+
+    const result = await pool.query(
+      `SELECT password_hash FROM employees WHERE id = $1`,
+      [req.user.sub],
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Karyawan tidak ditemukan",
+        },
+      });
+    }
+
+    const isValid = await bcrypt.compare(oldPassword, result.rows[0].password_hash);
+    if (!isValid) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "WRONG_OLD_PASSWORD",
+          message: "Password lama salah",
+        },
+      });
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await pool.query(
+      `UPDATE employees SET password_hash = $1, updated_at = now() WHERE id = $2`,
+      [newHash, req.user.sub],
+    );
+
+    res.json({ success: true, data: { message: "Password berhasil diubah" } });
+  } catch (err) {
+    console.error("[changePassword] Error:", err);
     return res.status(500).json({
       success: false,
       error: {

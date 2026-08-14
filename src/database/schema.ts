@@ -52,4 +52,8 @@ export async function syncSchema() {
     CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_account
     ON password_reset_tokens(account_type, account_id)
   `);
+
+  await pool.query(`
+    ALTER TABLE employees ADD COLUMN IF NOT EXISTS image TEXT
+  `);
 }

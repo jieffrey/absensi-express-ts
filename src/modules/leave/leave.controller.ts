@@ -139,7 +139,32 @@ export async function teamLeaveRequests(req: Request, res: Response) {
   }
 }
 
-export async function approveLeaveRequest(req: Request, res: Response) {
+export async function adminLeaveRequests(req: Request, res: Response) {
+  try {
+    const result = await pool.query(
+      `SELECT lr.*, lt.name as leave_type_name, e.name as employee_name, d.name as department_name
+       FROM leave_requests lr
+       JOIN leave_types lt ON lr.leave_type_id = lt.id
+       JOIN employees e ON lr.employee_id = e.id
+       LEFT JOIN departments d ON e.department_id = d.id
+       WHERE lr.company_id = $1
+       ORDER BY lr.created_at DESC`,
+      [req.user.companyId],
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error("[adminLeaveRequests] Error:", err);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Something went wrong. Please try again later.",
+      },
+    });
+  }
+}
+
+  export async function approveLeaveRequest(req: Request, res: Response) {
   const { id } = req.params;
   const { approval_note } = req.body;
   const client = await pool.connect();
