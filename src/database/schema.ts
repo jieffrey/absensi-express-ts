@@ -54,6 +54,31 @@ export async function syncSchema() {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS reimbursements (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      company_id UUID NOT NULL,
+      employee_id UUID NOT NULL,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL,
+      expense_date DATE NOT NULL,
+      amount NUMERIC(15,2) NOT NULL CHECK (amount >= 0),
+      description TEXT,
+      attachment_url TEXT,
+      status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending','approved','rejected')),
+      approved_by UUID,
+      approved_at TIMESTAMPTZ,
+      approval_note TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_reimbursements_company
+    ON reimbursements(company_id, status)
+  `);
+
+  await pool.query(`
     ALTER TABLE employees ADD COLUMN IF NOT EXISTS image TEXT
   `);
 }
