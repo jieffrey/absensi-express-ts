@@ -79,6 +79,23 @@ export async function syncSchema() {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS announcements (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      company_id UUID NOT NULL,
+      author_id UUID,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_announcements_company
+    ON announcements(company_id, created_at DESC)
+  `);
+
+  await pool.query(`
     ALTER TABLE employees ADD COLUMN IF NOT EXISTS image TEXT
   `);
 }

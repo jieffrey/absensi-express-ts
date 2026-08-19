@@ -155,6 +155,7 @@ export async function deleteCompany(req: Request, res: Response) {
       );
       await client.query(`DELETE FROM leave_requests WHERE company_id = $1`, [companyId]);
       await client.query(`DELETE FROM reimbursements WHERE company_id = $1`, [companyId]);
+      await client.query(`DELETE FROM announcements WHERE company_id = $1`, [companyId]);
       await client.query(
         `DELETE FROM leave_quota_ledger WHERE employee_id = ANY($1::uuid[])`,
         [empIds],

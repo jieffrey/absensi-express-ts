@@ -337,3 +337,56 @@ export async function allAttendance(req: Request, res: Response) {
     });
   }
 }
+
+export async function adminAttendanceReport(req: Request, res: Response) {
+  try {
+    const { date, department_id, status } = req.query;
+    const hasDate = !!date && String(date).length === 10;
+
+    const params: any[] = [req.user.companyId];
+    if (hasDate) params.push(String(date));
+    const dateExpr = hasDate ? `$${params.length}::date` : "CURRENT_DATE";
+
+    let sql = `
+      SELECT e.id as employee_id, e.name as employee_name,
+             d.name as department_name,
+             ${dateExpr} AS date,
+             CASE
+               WHEN a.id IS NULL THEN 'absent'
+               WHEN a.status = 'telat' THEN 'late'
+               ELSE 'present'
+             END AS status,
+             to_char(a.clock_in_time, 'HH24:MI') AS check_in,
+             to_char(a.clock_out_time, 'HH24:MI') AS check_out,
+             a.status AS raw_status
+      FROM employees e
+      LEFT JOIN departments d ON e.department_id = d.id
+      LEFT JOIN attendances a ON a.employee_id = e.id AND a.company_id = $1
+        AND a.clock_in_time::date = ${dateExpr}
+      WHERE e.company_id = $1 AND e.status = 'active'
+    `;
+
+    if (department_id) {
+      params.push(department_id);
+      sql += ` AND e.department_id = $${params.length}`;
+    }
+    if (status) {
+      params.push(status);
+      sql += ` AND (a.id IS NULL OR a.status = $${params.length})`;
+    }
+
+    sql += ` ORDER BY e.name ASC`;
+
+    const result = await pool.query(sql, params);
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error("[adminAttendanceReport] Error:", err);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Something went wrong. Please try again later.",
+      },
+    });
+  }
+}
