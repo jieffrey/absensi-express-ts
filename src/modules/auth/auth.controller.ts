@@ -102,9 +102,13 @@ export async function login(req: Request, res: Response) {
 export async function me(req: Request, res: Response) {
   try {
     const result = await pool.query(
-      `SELECT e.id, e.name, e.email, e.image, r.name as role_name, e.department_id, e.position_id
+      `SELECT e.id as employee_id, e.name, e.email, e.image, r.name as role_name,
+              e.department_id, d.name as department,
+              e.position_id, p.name as position
        FROM employees e
        JOIN roles r ON e.role_id = r.id
+       LEFT JOIN departments d ON e.department_id = d.id
+       LEFT JOIN positions p ON e.position_id = p.id
        WHERE e.id = $1`,
       [req.user.sub],
     );

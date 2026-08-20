@@ -69,10 +69,10 @@ export async function createDepartment(req: Request, res: Response) {
 
 export async function updateDepartment(req: Request, res: Response) {
   try {
-    const { name } = req.body;
+    const { name, status } = req.body;
     const result = await pool.query(
-      `UPDATE departments SET name = $1 WHERE id = $2 AND company_id = $3 RETURNING *`,
-      [name, req.params.id, req.user.companyId],
+      `UPDATE departments SET name = $1, status = COALESCE($2, status) WHERE id = $3 AND company_id = $4 RETURNING *`,
+      [name, status ?? null, req.params.id, req.user.companyId],
     );
     if (result.rows.length === 0) {
       return res
@@ -113,6 +113,19 @@ export async function deleteDepartment(req: Request, res: Response) {
           },
         });
     }
+
+    // release non-active employees from this department so the FK constraint
+    // does not block the delete
+    await pool.query(
+      `UPDATE employees SET department_id = NULL WHERE department_id = $1 AND status <> 'active'`,
+      [req.params.id],
+    );
+
+    // remove department policies referencing this department
+    await pool.query(
+      `DELETE FROM department_policies WHERE department_id = $1`,
+      [req.params.id],
+    );
 
     const result = await pool.query(
       `DELETE FROM departments WHERE id = $1 AND company_id = $2 RETURNING id`,

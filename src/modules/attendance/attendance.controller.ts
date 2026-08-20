@@ -298,9 +298,10 @@ export async function allAttendance(req: Request, res: Response) {
     const { department_id, status, start_date, end_date } = req.query;
 
     let sql = `
-      SELECT a.*, e.name as employee_name, e.department_id
+      SELECT a.*, e.name as employee_name, e.department_id, d.name as department_name
       FROM attendances a
       JOIN employees e ON a.employee_id = e.id
+      LEFT JOIN departments d ON e.department_id = d.id
       WHERE a.company_id = $1
     `;
     const params: any[] = [req.user.companyId];
@@ -315,11 +316,11 @@ export async function allAttendance(req: Request, res: Response) {
     }
     if (start_date) {
       params.push(start_date);
-      sql += ` AND a.clock_in_time >= $${params.length}`;
+      sql += ` AND a.clock_in_time::date >= $${params.length}::date`;
     }
     if (end_date) {
       params.push(end_date);
-      sql += ` AND a.clock_in_time <= $${params.length}`;
+      sql += ` AND a.clock_in_time::date <= $${params.length}::date`;
     }
 
     sql += ` ORDER BY a.clock_in_time DESC`;

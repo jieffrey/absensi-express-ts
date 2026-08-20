@@ -150,9 +150,10 @@ export async function triggerCronManual(req: Request, res: Response) {
   try {
     const { job } = req.params;
 
-    if (job === "auto-alpha") await autoMarkAlpha();
-    else if (job === "monthly-quota") await monthlyLeaveQuota();
-    else if (job === "monthly-recap") await generateMonthlyRecap();
+    let processed: number;
+    if (job === "auto-alpha") processed = await autoMarkAlpha();
+    else if (job === "monthly-quota") processed = await monthlyLeaveQuota();
+    else if (job === "monthly-recap") processed = await generateMonthlyRecap();
     else
       return res
         .status(400)
@@ -163,7 +164,7 @@ export async function triggerCronManual(req: Request, res: Response) {
 
     res.json({
       success: true,
-      data: { message: `Job ${job} executed manually` },
+      data: { job, processed },
     });
   } catch (err) {
     console.error("[triggerCronManual] Error:", err);

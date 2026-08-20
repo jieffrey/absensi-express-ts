@@ -98,4 +98,8 @@ export async function syncSchema() {
   await pool.query(`
     ALTER TABLE employees ADD COLUMN IF NOT EXISTS image TEXT
   `);
+
+  await pool.query(`
+    ALTER TABLE departments ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'
+  `);
 }

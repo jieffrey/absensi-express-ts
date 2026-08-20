@@ -9,6 +9,7 @@ router.post('/clock-out', authenticate, clockOut);
 router.get('/me', authenticate, myAttendance);
 router.get('/team', authenticate, authorize('supervisor'), teamAttendance);
 router.get('/admin/report', authenticate, authorize('admin'), adminAttendanceReport);
+router.get('/admin/all', authenticate, authorize('admin'), allAttendance);
 router.get('/', authenticate, authorize('admin'), allAttendance);
 
 export default router;

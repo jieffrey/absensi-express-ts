@@ -6,7 +6,7 @@ import { pool } from "../config/database";
 // Jalan tiap hari jam 23:00 — cek siapa yang punya jadwal
 // hari itu tapi nggak pernah clock-in
 // ============================================
-async function autoMarkAlpha() {
+async function autoMarkAlpha(): Promise<number> {
   console.log("🔄 Menjalankan auto-mark Alpha...");
 
   const result = await pool.query(`
@@ -28,13 +28,14 @@ async function autoMarkAlpha() {
   `);
 
   console.log(`✅ ${result.rowCount} karyawan ditandai Alpha`);
+  return result.rowCount ?? 0;
 }
 
 // ============================================
 // JOB 2: Reset/Tambah Kuota Cuti Bulanan
 // Jalan tiap tanggal 1, jam 00:00
 // ============================================
-async function monthlyLeaveQuota() {
+async function monthlyLeaveQuota(): Promise<number> {
   console.log("🔄 Menjalankan reset kuota cuti bulanan...");
 
   const result = await pool.query(`
@@ -46,13 +47,14 @@ async function monthlyLeaveQuota() {
   `);
 
   console.log(`✅ Kuota cuti ditambahkan untuk ${result.rowCount} karyawan`);
+  return result.rowCount ?? 0;
 }
 
 // ============================================
 // JOB 3: Generate Rekap Terjadwal
 // Jalan tiap akhir bulan, jam 23:30
 // ============================================
-async function generateMonthlyRecap() {
+async function generateMonthlyRecap(): Promise<number> {
   console.log("🔄 Menjalankan generate rekap bulanan...");
 
   const result = await pool.query(`
@@ -68,6 +70,7 @@ async function generateMonthlyRecap() {
   // Untuk sekarang, rekap ini di-log aja / bisa disimpan ke tabel rekap terpisah kalau nanti dibutuhkan
   console.log(`✅ Rekap bulanan dihitung untuk ${result.rowCount} karyawan`);
   // TODO: simpan ke tabel monthly_recap kalau nanti dibutuhkan history rekap tersimpan
+  return result.rowCount ?? 0;
 }
 
 // ============================================
