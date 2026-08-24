@@ -4,7 +4,15 @@ import { pool } from "../../config/database";
 export async function listDepartments(req: Request, res: Response) {
   try {
     const result = await pool.query(
-      `SELECT * FROM departments WHERE company_id = $1 ORDER BY name`,
+      `SELECT d.*,
+              (
+                SELECT COUNT(*)
+                FROM employees e
+                WHERE e.department_id = d.id AND e.status = 'active'
+              ) AS employee_count
+       FROM departments d
+       WHERE d.company_id = $1
+       ORDER BY d.name`,
       [req.user.companyId],
     );
     res.json({ success: true, data: result.rows });
