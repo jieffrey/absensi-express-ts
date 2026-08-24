@@ -59,5 +59,35 @@ app.use("/api/v1/messages", messageRoutes);
 app.use("/api/v1/tasks", taskRoutes);
 app.use("/api/v1/admin", adminRoutes);
 
+// global error handler: keep body-parser/JSON failures as clean 400 JSON
+interface ErrorWithStatus extends Error {
+  status?: number;
+  statusCode?: number;
+  type?: string;
+}
+
+app.use((err: ErrorWithStatus, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const isJsonParseError =
+    err instanceof SyntaxError &&
+    (err.status === 400 || err.type === "entity.parse.failed");
+  if (isJsonParseError) {
+    console.warn(`[bad-json] ${req.method} ${req.originalUrl}: ${err.message}`);
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: "BAD_JSON",
+        message: "Request body is not valid JSON.",
+      },
+    });
+  }
+  console.error(`[error] ${req.method} ${req.originalUrl}:`, err);
+  return res.status(err.statusCode || err.status || 500).json({
+    success: false,
+    error: {
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Something went wrong. Please try again later.",
+    },
+  });
+});
 
 export default app;
