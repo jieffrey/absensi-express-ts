@@ -102,4 +102,36 @@ export async function syncSchema() {
   await pool.query(`
     ALTER TABLE departments ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active'
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      company_id UUID NOT NULL,
+      employee_id UUID NOT NULL,
+      body TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_messages_company_created
+    ON messages(company_id, created_at DESC)
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      company_id UUID NOT NULL,
+      employee_id UUID NOT NULL,
+      task_date DATE NOT NULL,
+      title TEXT NOT NULL,
+      done BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_tasks_employee_date
+    ON tasks(employee_id, task_date)
+  `);
 }

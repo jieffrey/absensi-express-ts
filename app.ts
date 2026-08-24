@@ -21,6 +21,8 @@ import personalAgendaRoutes from './src/modules/personalAgenda/personalAgenda.ro
 import rolesRoutes from './src/modules/roles/roles.routes';
 import dashboardRoutes from './src/modules/dashboard/dashboard.routes';
 import faceRecognitionRoutes from "./src/modules/faceRecognition/faceRecognition.routes";
+import messageRoutes from "./src/modules/message/message.routes";
+import taskRoutes from "./src/modules/task/task.routes";
 import adminRoutes from "./src/shared/constants/admin.routes"
 
 
@@ -53,6 +55,8 @@ app.use('/api/v1/personal-agendas', personalAgendaRoutes);
 app.use('/api/v1/roles', rolesRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 app.use("/api/v1/face-recognition", faceRecognitionRoutes);
+app.use("/api/v1/messages", messageRoutes);
+app.use("/api/v1/tasks", taskRoutes);
 app.use("/api/v1/admin", adminRoutes);
 
 

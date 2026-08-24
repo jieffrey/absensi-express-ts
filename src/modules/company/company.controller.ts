@@ -202,6 +202,12 @@ export async function deleteCompany(req: Request, res: Response) {
     await client.query(`DELETE FROM office_locations WHERE company_id = $1`, [companyId]);
     await client.query(`DELETE FROM positions WHERE company_id = $1`, [companyId]);
     await client.query(`DELETE FROM departments WHERE company_id = $1`, [companyId]);
+    await client.query(
+      `UPDATE employees
+       SET role_id = NULL
+       WHERE role_id IN (SELECT id FROM roles WHERE company_id = $1)`,
+      [companyId],
+    );
     await client.query(`DELETE FROM roles WHERE company_id = $1`, [companyId]);
     await client.query(`DELETE FROM companies WHERE id = $1`, [companyId]);
 
