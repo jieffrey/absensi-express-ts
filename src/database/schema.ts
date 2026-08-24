@@ -104,6 +104,10 @@ export async function syncSchema() {
   `);
 
   await pool.query(`
+    ALTER TABLE positions ADD COLUMN IF NOT EXISTS reimbursement_limit NUMERIC(15,2) NOT NULL DEFAULT 0
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS messages (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       company_id UUID NOT NULL,

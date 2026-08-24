@@ -48,6 +48,36 @@ export async function createReimburseRequest(req: Request, res: Response) {
       attachmentUrl = uploadResult.secure_url;
     }
 
+    const positionResult = await pool.query(
+      `SELECT p.reimbursement_limit
+       FROM employees e
+       JOIN positions p ON e.position_id = p.id
+       WHERE e.id = $1`,
+      [employeeId],
+    );
+    const limit = Number(positionResult.rows[0]?.reimbursement_limit ?? 0);
+    if (limit > 0) {
+      const usedResult = await pool.query(
+        `SELECT COALESCE(SUM(amount), 0) AS total_used
+         FROM reimbursements
+         WHERE employee_id = $1
+           AND status IN ('pending', 'approved')
+           AND date_trunc('month', expense_date) = date_trunc('month', $2::date)`,
+        [employeeId, expense_date],
+      );
+      const usedAmount = Number(usedResult.rows[0].total_used);
+      const remaining = limit - usedAmount;
+      if (Number(amount) > remaining) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: "LIMIT_EXCEEDED",
+            message: `Melebihi batas reimbursement jabatan untuk bulan ini. Limit: ${limit.toLocaleString("id-ID")}, terpakai: ${usedAmount.toLocaleString("id-ID")}, sisa: ${Math.max(remaining, 0).toLocaleString("id-ID")}.`,
+          },
+        });
+      }
+    }
+
     const result = await pool.query(
       `INSERT INTO reimbursements (company_id, employee_id, title, category, expense_date, amount, description, attachment_url, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending') RETURNING *`,
@@ -121,10 +151,12 @@ export async function teamReimburseRequests(req: Request, res: Response) {
 export async function adminReimburseRequests(req: Request, res: Response) {
   try {
     const result = await pool.query(
-      `SELECT r.*, e.name as employee_name, d.name as department_name
+      `SELECT r.*, e.name as employee_name, d.name as department_name,
+              p.name as position_name
        FROM reimbursements r
        JOIN employees e ON r.employee_id = e.id
        LEFT JOIN departments d ON e.department_id = d.id
+       LEFT JOIN positions p ON e.position_id = p.id
        WHERE r.company_id = $1
        ORDER BY r.created_at DESC`,
       [req.user.companyId],

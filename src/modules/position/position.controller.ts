@@ -30,10 +30,11 @@ export async function listPositions(req: Request, res: Response) {
 
 export async function createPosition(req: Request, res: Response) {
   try {
-    const { name } = req.body;
+    const { name, reimbursement_limit } = req.body;
     const result = await pool.query(
-      `INSERT INTO positions (company_id, name) VALUES ($1, $2) RETURNING *`,
-      [req.user.companyId, name],
+      `INSERT INTO positions (company_id, name, reimbursement_limit)
+       VALUES ($1, $2, COALESCE($3::numeric, 0)) RETURNING *`,
+      [req.user.companyId, name, reimbursement_limit ?? null],
     );
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
@@ -50,10 +51,14 @@ export async function createPosition(req: Request, res: Response) {
 
 export async function updatePosition(req: Request, res: Response) {
   try {
-    const { name } = req.body;
+    const { name, reimbursement_limit } = req.body;
     const result = await pool.query(
-      `UPDATE positions SET name = $1 WHERE id = $2 AND company_id = $3 RETURNING *`,
-      [name, req.params.id, req.user.companyId],
+      `UPDATE positions
+       SET name = $1,
+           reimbursement_limit = COALESCE($2::numeric, reimbursement_limit)
+       WHERE id = $3 AND company_id = $4
+       RETURNING *`,
+      [name, reimbursement_limit ?? null, req.params.id, req.user.companyId],
     );
     if (result.rows.length === 0) {
       return res
