@@ -3,6 +3,10 @@ import { pool } from "../../config/database";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+export const FACE_MATCH_MIN_CONFIDENCE = Number(
+  process.env.FACE_MATCH_MIN_CONFIDENCE ?? "0.7",
+);
+
 export class FaceReferenceNotFoundError extends Error {
   constructor(message: string) {
     super(message);
@@ -93,9 +97,24 @@ Jawab HANYA dalam format JSON tanpa teks tambahan, dengan struktur persis sepert
   let result: { match: boolean; confidence: number; reason: string };
   try {
     result = JSON.parse(cleaned);
+    if (typeof result.match !== "boolean") {
+      throw new Error("invalid shape");
+    }
   } catch {
     throw new GeminiParseError("Failed to parse Gemini response", rawText);
   }
 
-  return result;
+  const confidence = Number.isFinite(result.confidence)
+    ? Math.min(Math.max(Number(result.confidence), 0), 1)
+    : undefined;
+
+  if (result.match && confidence !== undefined && confidence < FACE_MATCH_MIN_CONFIDENCE) {
+    return {
+      match: false,
+      confidence,
+      reason: `${result.reason ?? ""} (confidence ${confidence} below minimum ${FACE_MATCH_MIN_CONFIDENCE})`.trim(),
+    };
+  }
+
+  return { match: result.match, confidence, reason: result.reason };
 }
