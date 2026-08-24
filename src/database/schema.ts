@@ -186,6 +186,10 @@ export async function syncSchema() {
   `);
 
   await pool.query(`
+    ALTER TABLE tasks ADD COLUMN IF NOT EXISTS done_at TIMESTAMPTZ
+  `);
+
+  await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_tasks_employee_date
     ON tasks(employee_id, task_date)
   `);

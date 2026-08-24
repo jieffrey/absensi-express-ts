@@ -88,7 +88,12 @@ export async function updateTask(req: Request, res: Response) {
     const result = await pool.query(
       `UPDATE tasks
        SET done = COALESCE($1, done),
-           title = COALESCE($2, title)
+           title = COALESCE($2, title),
+           done_at = CASE
+             WHEN $1::boolean IS TRUE THEN now()
+             WHEN $1::boolean IS FALSE THEN NULL
+             ELSE done_at
+           END
        WHERE id = $3 AND employee_id = $4
        RETURNING *`,
       [
