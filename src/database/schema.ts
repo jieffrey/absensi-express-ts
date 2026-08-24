@@ -152,6 +152,28 @@ export async function syncSchema() {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS direct_messages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      company_id UUID NOT NULL,
+      sender_id UUID NOT NULL,
+      recipient_id UUID NOT NULL,
+      body TEXT NOT NULL,
+      read_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_direct_messages_company_created
+    ON direct_messages(company_id, created_at DESC)
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_direct_messages_recipient_unread
+    ON direct_messages(recipient_id, read_at)
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS tasks (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       company_id UUID NOT NULL,

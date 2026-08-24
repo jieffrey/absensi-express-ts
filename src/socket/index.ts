@@ -67,6 +67,7 @@ export function initSocketServer(httpServer: HttpServer) {
   io.on("connection", (socket: Socket) => {
     const { employeeId, companyId } = socket.data as SocketData;
     socket.join(`company:${companyId}`);
+    socket.join(`employee:${employeeId}`);
     lastMessageAt.delete(socket.id);
 
     socket.on(
@@ -108,6 +109,82 @@ export function initSocketServer(httpServer: HttpServer) {
           ack?.({ success: true, data: message });
         } catch (err) {
           console.error("[socket] message:send error:", err);
+          ack?.({
+            success: false,
+            error: { code: "INTERNAL_SERVER_ERROR" },
+          });
+        }
+      },
+    );
+
+    socket.on(
+      "dm:send",
+      async (
+        raw: { recipientId?: unknown; body?: unknown },
+        ack?: (response: unknown) => void,
+      ) => {
+        try {
+          const now = Date.now();
+          const last = lastMessageAt.get(socket.id) ?? 0;
+          if (now - last < RATE_LIMIT_MS) {
+            ack?.({ success: false, error: { code: "TOO_FAST" } });
+            return;
+          }
+
+          const recipientId =
+            typeof raw?.recipientId === "string" ? raw.recipientId : "";
+          const body =
+            typeof raw?.body === "string" ? raw.body.trim().slice(0, 1000) : "";
+
+          if (!body) {
+            ack?.({ success: false, error: { code: "EMPTY_MESSAGE" } });
+            return;
+          }
+          if (
+            !recipientId ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+              recipientId,
+            ) ||
+            recipientId === employeeId
+          ) {
+            ack?.({
+              success: false,
+              error: { code: "INVALID_RECIPIENT" },
+            });
+            return;
+          }
+          lastMessageAt.set(socket.id, now);
+
+          const partnerResult = await pool.query(
+            `SELECT id FROM employees WHERE id = $1 AND company_id = $2 AND status = 'active'`,
+            [recipientId, companyId],
+          );
+          if (partnerResult.rows.length === 0) {
+            ack?.({
+              success: false,
+              error: { code: "RECIPIENT_NOT_FOUND" },
+            });
+            return;
+          }
+
+          const result = await pool.query(
+            `WITH ins AS (
+               INSERT INTO direct_messages (company_id, sender_id, recipient_id, body)
+               VALUES ($1, $2, $3, $4)
+               RETURNING id, company_id, sender_id, recipient_id, body, created_at
+             )
+             SELECT ins.*, e.name AS employee_name, e.image AS employee_image
+             FROM ins
+             JOIN employees e ON e.id = ins.sender_id`,
+            [companyId, employeeId, recipientId, body],
+          );
+          const message = result.rows[0];
+
+          io!.to(`employee:${recipientId}`).emit("dm:new", message);
+          io!.to(`employee:${employeeId}`).emit("dm:new", message);
+          ack?.({ success: true, data: message });
+        } catch (err) {
+          console.error("[socket] dm:send error:", err);
           ack?.({
             success: false,
             error: { code: "INTERNAL_SERVER_ERROR" },
