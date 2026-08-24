@@ -27,11 +27,11 @@ export async function sendEmail(to: string, subject: string, html: string) {
       "subject:",
       subject,
     );
-    // Extract any reset link from the HTML so the dev can copy it manually
-    const linkMatch = html.match(/href="([^"]*reset[^"]*)"/i);
+    // Extract any action link from the HTML so the dev can copy it manually
+    const linkMatch = html.match(/href="([^"]*(?:reset|onboard|invite)[^"]*)"/i);
     const devFallbackLink = linkMatch ? linkMatch[1] : null;
     if (devFallbackLink) {
-      console.log("[sendEmail] DEV FALLBACK — salin link reset manual:", devFallbackLink);
+      console.log("[sendEmail] DEV FALLBACK — salin link aksi manual:", devFallbackLink);
     }
     return { success: false, skipped: true, reason: "no_credentials", devFallbackLink };
   }
@@ -49,11 +49,11 @@ export async function sendEmail(to: string, subject: string, html: string) {
     return { success: true, messageId: info.messageId };
   } catch (err: any) {
     console.error("[sendEmail] Error:", err?.message || err);
-    // Extract any reset link from the HTML so the dev can copy it manually
-    const linkMatch = html.match(/href="([^"]*reset[^"]*)"/i);
+    // Extract any action link from the HTML so the dev can copy it manually
+    const linkMatch = html.match(/href="([^"]*(?:reset|onboard|invite)[^"]*)"/i);
     const devFallbackLink = linkMatch ? linkMatch[1] : null;
     if (devFallbackLink) {
-      console.log("[sendEmail] DEV FALLBACK — salin link reset manual:", devFallbackLink);
+      console.log("[sendEmail] DEV FALLBACK — salin link aksi manual:", devFallbackLink);
     }
     return { success: false, error: err?.message || String(err), devFallbackLink };
   }

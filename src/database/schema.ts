@@ -108,6 +108,35 @@ export async function syncSchema() {
   `);
 
   await pool.query(`
+    ALTER TABLE companies ADD COLUMN IF NOT EXISTS pic_name TEXT
+  `);
+
+  await pool.query(`
+    ALTER TABLE companies ADD COLUMN IF NOT EXISTS pic_email TEXT
+  `);
+
+  await pool.query(`
+    ALTER TABLE companies ADD COLUMN IF NOT EXISTS onboarded_at TIMESTAMPTZ
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS company_onboarding_tokens (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      company_id UUID NOT NULL,
+      email TEXT NOT NULL,
+      token_hash TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_company_onboarding_tokens_hash
+    ON company_onboarding_tokens(token_hash)
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS messages (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       company_id UUID NOT NULL,

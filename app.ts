@@ -24,6 +24,7 @@ import faceRecognitionRoutes from "./src/modules/faceRecognition/faceRecognition
 import messageRoutes from "./src/modules/message/message.routes";
 import taskRoutes from "./src/modules/task/task.routes";
 import adminRoutes from "./src/shared/constants/admin.routes"
+import onboardingRoutes from './src/modules/onboarding/onboarding.routes';
 
 
 const app = express();
@@ -58,6 +59,7 @@ app.use("/api/v1/face-recognition", faceRecognitionRoutes);
 app.use("/api/v1/messages", messageRoutes);
 app.use("/api/v1/tasks", taskRoutes);
 app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/onboarding", onboardingRoutes);
 
 // global error handler: keep body-parser/JSON failures as clean 400 JSON
 interface ErrorWithStatus extends Error {
