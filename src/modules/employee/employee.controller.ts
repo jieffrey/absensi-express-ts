@@ -3,11 +3,38 @@ import bcrypt from "bcrypt";
 import { pool } from "../../config/database";
 import cloudinary from "../../config/cloudinary";
 
+const GENDERS = new Set(["male", "female"]);
+const MARITAL_STATUSES = new Set(["single", "married", "divorced"]);
+
+function normalizePersonalFields(body: Record<string, unknown>) {
+  const str = (v: unknown, max: number) =>
+    typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null;
+
+  return {
+    phone: str(body.phone, 32),
+    address: str(body.address, 500),
+    birth_date:
+      typeof body.birth_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.birth_date)
+        ? body.birth_date
+        : null,
+    gender:
+      typeof body.gender === "string" && GENDERS.has(body.gender)
+        ? body.gender
+        : null,
+    marital_status:
+      typeof body.marital_status === "string" &&
+      MARITAL_STATUSES.has(body.marital_status)
+        ? body.marital_status
+        : null,
+  };
+}
+
 export async function listEmployees(req: Request, res: Response) {
   try {
     const { department_id, status, search } = req.query;
 
-    let sql = `SELECT e.id, e.name, e.email, e.status, r.name as role_name, e.department_id, e.position_id
+    let sql = `SELECT e.id, e.name, e.email, e.status, r.name as role_name, e.department_id, e.position_id,
+                      e.phone, e.address, e.birth_date, e.gender, e.marital_status, e.join_date
                FROM employees e JOIN roles r ON e.role_id = r.id
                WHERE e.company_id = $1`;
     const params: any[] = [req.user.companyId];
@@ -51,12 +78,15 @@ export async function createEmployee(req: Request, res: Response) {
       supervisor_id,
       join_date,
     } = req.body;
+    const personal = normalizePersonalFields(req.body ?? {});
 
     const passwordHash = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
-      `INSERT INTO employees (company_id, role_id, department_id, position_id, supervisor_id, name, email, password_hash, join_date, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active')
+      `INSERT INTO employees (company_id, role_id, department_id, position_id, supervisor_id, name, email, password_hash, join_date, status,
+                              phone, address, birth_date, gender, marital_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active',
+               $10, $11, $12, $13, $14)
        RETURNING id, name, email, status`,
       [
         req.user.companyId,
@@ -68,6 +98,11 @@ export async function createEmployee(req: Request, res: Response) {
         email,
         passwordHash,
         join_date,
+        personal.phone,
+        personal.address,
+        personal.birth_date,
+        personal.gender,
+        personal.marital_status,
       ],
     );
 
@@ -87,7 +122,8 @@ export async function createEmployee(req: Request, res: Response) {
 export async function getEmployeeById(req: Request, res: Response) {
   try {
     const result = await pool.query(
-      `SELECT e.id, e.name, e.email, e.status, r.name as role_name, e.department_id, e.position_id
+      `SELECT e.id, e.name, e.email, e.status, r.name as role_name, e.department_id, e.position_id,
+              e.phone, e.address, e.birth_date, e.gender, e.marital_status, e.join_date
        FROM employees e JOIN roles r ON e.role_id = r.id
        WHERE e.id = $1 AND e.company_id = $2`,
       [req.params.id, req.user.companyId],
@@ -115,13 +151,28 @@ export async function getEmployeeById(req: Request, res: Response) {
 export async function updateEmployee(req: Request, res: Response) {
   try {
     const { name, department_id, position_id } = req.body;
+    const personal = normalizePersonalFields(req.body ?? {});
 
     const result = await pool.query(
       `UPDATE employees SET name = COALESCE($1, name), department_id = COALESCE($2, department_id),
-       position_id = COALESCE($3, position_id), updated_at = now()
-       WHERE id = $4 AND company_id = $5
+       position_id = COALESCE($3, position_id),
+       phone = COALESCE($4, phone), address = COALESCE($5, address),
+       birth_date = COALESCE($6, birth_date), gender = COALESCE($7, gender),
+       marital_status = COALESCE($8, marital_status), updated_at = now()
+       WHERE id = $9 AND company_id = $10
        RETURNING id, name, email, status`,
-      [name, department_id, position_id, req.params.id, req.user.companyId],
+      [
+        name,
+        department_id,
+        position_id,
+        personal.phone,
+        personal.address,
+        personal.birth_date,
+        personal.gender,
+        personal.marital_status,
+        req.params.id,
+        req.user.companyId,
+      ],
     );
 
     if (result.rows.length === 0) {

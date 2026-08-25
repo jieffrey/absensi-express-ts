@@ -22,9 +22,9 @@ const RATE_LIMIT_MS = 300;
 export function initSocketServer(httpServer: HttpServer) {
   io = new SocketServer(httpServer, {
     cors: {
-      origin:
-        process.env.CORS_ORIGIN?.split(",").map((o) => o.trim()) ??
-        ["http://localhost:3000"],
+      origin: process.env.CORS_ORIGIN?.split(",").map((o) => o.trim()) ?? [
+        "http://localhost:3000",
+      ],
       credentials: true,
     },
   });
@@ -72,10 +72,7 @@ export function initSocketServer(httpServer: HttpServer) {
 
     socket.on(
       "message:send",
-      async (
-        raw: { body?: unknown },
-        ack?: (response: unknown) => void,
-      ) => {
+      async (raw: { body?: unknown }, ack?: (response: unknown) => void) => {
         try {
           const now = Date.now();
           const last = lastMessageAt.get(socket.id) ?? 0;

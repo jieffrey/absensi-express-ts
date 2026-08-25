@@ -46,14 +46,45 @@ export async function getCompanyById(req: Request, res: Response) {
 }
 
 export async function createCompany(req: Request, res: Response) {
+  const client = await pool.connect();
   try {
-    const { name, pic_name, pic_email } = req.body;
-    const result = await pool.query(
+    const { name, pic_name, pic_email, office_location } = req.body ?? {};
+    await client.query("BEGIN");
+
+    const companyResult = await client.query(
       `INSERT INTO companies (name, status, pic_name, pic_email) VALUES ($1, 'active', $2, $3) RETURNING *`,
       [name, pic_name ?? null, pic_email ?? null],
     );
-    res.status(201).json({ success: true, data: result.rows[0] });
+
+    const company = companyResult.rows[0];
+
+    if (office_location && typeof office_location === "object") {
+      const locName =
+        typeof office_location.name === "string" && office_location.name.trim()
+          ? office_location.name.trim()
+          : "Kantor Pusat";
+      const lat = Number(office_location.latitude);
+      const lng = Number(office_location.longitude);
+      const radius = Number(office_location.radius_meters);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        await client.query(
+          `INSERT INTO office_locations (company_id, name, latitude, longitude, radius_meters)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [
+            company.id,
+            locName,
+            lat,
+            lng,
+            !isNaN(radius) && radius > 0 ? radius : 150,
+          ],
+        );
+      }
+    }
+
+    await client.query("COMMIT");
+    res.status(201).json({ success: true, data: company });
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("[createCompany] Error:", err);
     return res.status(500).json({
       success: false,
@@ -62,6 +93,8 @@ export async function createCompany(req: Request, res: Response) {
         message: "Something went wrong. Please try again later.",
       },
     });
+  } finally {
+    client.release();
   }
 }
 

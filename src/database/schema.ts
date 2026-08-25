@@ -186,6 +186,24 @@ export async function syncSchema() {
   `);
 
   await pool.query(`
+    ALTER TABLE employees ADD COLUMN IF NOT EXISTS phone VARCHAR(32)
+  `);
+  await pool.query(`
+    ALTER TABLE employees ADD COLUMN IF NOT EXISTS address TEXT
+  `);
+  await pool.query(`
+    ALTER TABLE employees ADD COLUMN IF NOT EXISTS birth_date DATE
+  `);
+  await pool.query(`
+    ALTER TABLE employees ADD COLUMN IF NOT EXISTS gender VARCHAR(10)
+    CHECK (gender IN ('male','female'))
+  `);
+  await pool.query(`
+    ALTER TABLE employees ADD COLUMN IF NOT EXISTS marital_status VARCHAR(20)
+    CHECK (marital_status IN ('single','married','divorced'))
+  `);
+
+  await pool.query(`
     ALTER TABLE tasks ADD COLUMN IF NOT EXISTS done_at TIMESTAMPTZ
   `);
 
