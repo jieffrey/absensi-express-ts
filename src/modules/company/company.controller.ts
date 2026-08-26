@@ -49,6 +49,24 @@ export async function createCompany(req: Request, res: Response) {
   const client = await pool.connect();
   try {
     const { name, pic_name, pic_email, office_location } = req.body ?? {};
+
+    const loc =
+      office_location && typeof office_location === "object"
+        ? office_location
+        : null;
+    const lat = loc ? Number(loc.latitude) : NaN;
+    const lng = loc ? Number(loc.longitude) : NaN;
+    if (!loc || isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message:
+            "Office location is required: provide latitude and longitude",
+        },
+      });
+    }
+
     await client.query("BEGIN");
 
     const companyResult = await client.query(
@@ -58,28 +76,22 @@ export async function createCompany(req: Request, res: Response) {
 
     const company = companyResult.rows[0];
 
-    if (office_location && typeof office_location === "object") {
-      const locName =
-        typeof office_location.name === "string" && office_location.name.trim()
-          ? office_location.name.trim()
-          : "Kantor Pusat";
-      const lat = Number(office_location.latitude);
-      const lng = Number(office_location.longitude);
-      const radius = Number(office_location.radius_meters);
-      if (!isNaN(lat) && !isNaN(lng)) {
-        await client.query(
-          `INSERT INTO office_locations (company_id, name, latitude, longitude, radius_meters)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [
-            company.id,
-            locName,
-            lat,
-            lng,
-            !isNaN(radius) && radius > 0 ? radius : 150,
-          ],
-        );
-      }
-    }
+    const radius = Number(loc.radius_meters);
+    const locName =
+      typeof loc.name === "string" && loc.name.trim()
+        ? loc.name.trim()
+        : "Kantor Pusat";
+    await client.query(
+      `INSERT INTO office_locations (company_id, name, latitude, longitude, radius_meters)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        company.id,
+        locName,
+        lat,
+        lng,
+        !isNaN(radius) && radius > 0 ? radius : 150,
+      ],
+    );
 
     await client.query("COMMIT");
     res.status(201).json({ success: true, data: company });
