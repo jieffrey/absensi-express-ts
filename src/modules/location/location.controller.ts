@@ -78,11 +78,26 @@ export async function updateLocation(req: Request, res: Response) {
 }
 
 export async function deleteLocation(req: Request, res: Response) {
+  const client = await pool.connect();
   try {
+    // Check for dependent records in employee_schedules
+    const checkRes = await client.query(
+      `SELECT id FROM employee_schedules WHERE location_id = $1 AND company_id = $2`,
+      [req.params.id, req.user.companyId],
+    );
+    
+    if (checkRes.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: { code: "DEPENDENCY_EXISTS", message: "Cannot delete location: location is used by employee schedules. Remove or reassign schedules first." },
+      });
+    }
+    
     const result = await pool.query(
       `DELETE FROM office_locations WHERE id = $1 AND company_id = $2 RETURNING id`,
       [req.params.id, req.user.companyId],
     );
+    
     if (result.rows.length === 0)
       return res
         .status(404)
@@ -90,6 +105,7 @@ export async function deleteLocation(req: Request, res: Response) {
           success: false,
           error: { code: "NOT_FOUND", message: "Location not found" },
         });
+    
     res.json({ success: true, data: { message: "Location deleted" } });
   } catch (err) {
     console.error("[deleteLocation] Error:", err);
@@ -100,5 +116,7 @@ export async function deleteLocation(req: Request, res: Response) {
         message: "Something went wrong. Please try again later.",
       },
     });
+  } finally {
+    client.release();
   }
 }
