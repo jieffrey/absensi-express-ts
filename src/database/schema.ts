@@ -208,6 +208,28 @@ export async function syncSchema() {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS employee_face_references (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      face_descriptor JSONB,
+      image_url TEXT,
+      cloudinary_public_id TEXT,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+  await pool.query(`
+    ALTER TABLE employee_face_references
+    ADD COLUMN IF NOT EXISTS cloudinary_public_id TEXT
+  `);
+
+  await pool.query(`
+    ALTER TABLE employee_face_references
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true
+  `);
+
+  await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_tasks_employee_date
     ON tasks(employee_id, task_date)
   `);
